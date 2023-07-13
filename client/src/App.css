@@ -32,8 +32,16 @@ input {
   height: 3vh;
 }
 
-#playerList, #chat {
+#playerList {
   background-color: #545652;
+  padding: 1%;
+}
+
+#chat {
+  background-color: #545652;
+  max-height: 15vh;
+  overflow: scroll;
+  padding: 1%;
 }
 
 #ready {

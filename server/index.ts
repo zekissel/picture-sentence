@@ -27,6 +27,7 @@ interface Player {
   id: number;
   user: string;
   ready: boolean;
+  socket: string;
 }
 interface Paper {
   id: number;
@@ -46,7 +47,7 @@ io.on('connection', (socket: any) => {
     }
     else {
       /* servers keeps track of players in room */
-      const p = { id: 0, user: client.user, ready: false }
+      const p = { id: 0, user: client.user, ready: false, socket: socket.id }
       LOBBY.set(client.room, [p])
       active.set(client.room, false);
 
@@ -63,7 +64,7 @@ io.on('connection', (socket: any) => {
     const players = LOBBY.get(client.room);
     if (players !== undefined && !active.get(client.room)) {
       /* room exists, add user to list */
-      const p = { id: players.length, user: client.user, ready: false }
+      const p = { id: players.length, user: client.user, ready: false, socket: socket.id }
       players.push(p); LOBBY.set(client.room, players);
 
       socket.join(client.room);
@@ -129,7 +130,7 @@ io.on('connection', (socket: any) => {
       /* return payload for frontend */
       const payload = { err: false, msg: 'Ready\'d Up', code: `ready`, ready: client.ready };
       socket.emit('lobby_err', payload);
-      
+
       const lobbyLoad = { err: false, msg: client.msg, author: client.user, code: `lobby`, players: players };
       socket.to(client.room).emit('lobby_poll', lobbyLoad);
       
@@ -198,6 +199,13 @@ io.on('connection', (socket: any) => {
   /* CLOSE CONNECTION FROM CLIENT TO SERVER */
   socket.on('disconnect', () => {
     console.log(`User Disconnected`, socket.id);
+    const lobbies = LOBBY.entries();
+    for (let room of lobbies) {
+      room[1] = room[1].filter((p) => {
+        return p.socket !== socket.id;
+      });
+      LOBBY.set(room[0], room[1]);
+    }
   });
 });
 

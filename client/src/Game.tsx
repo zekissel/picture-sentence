@@ -31,6 +31,7 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
   const [idle, setIdle] = useState(false);
   const updateImage = (b64: string) => { setCurrent(b64); }
   const updateAnswer = (e: any) => { setCurrent(e.target.value); }
+  const enterSubmit = async (e: any) => { if (e.key == `Enter`) await submitAnswer(); }
   const submitAnswer = async () => {
     if (curAnswer !== ``) {
       const payload = { room: room, id: id, msg: curAnswer, round: round };
@@ -65,7 +66,7 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
       </div>
 
         { !idle && (round % 2 === 1 ? 
-          <input type='text' placeholder='Your sentence here'onChange={updateAnswer} value={curAnswer}/> :
+          <input type='text' placeholder='Your sentence here'onChange={updateAnswer} value={curAnswer} onKeyDown={enterSubmit}/> :
           <Canvas width={300} height={250} updateImage={updateImage} />)
         }
         {
@@ -83,6 +84,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   const [outbound, setOutbound] = useState(``);
   const updateOut = (e: any) => { setOutbound(e.target.value); }
   const [chat, setChat] = useState<string[]>([]);
+  const [btmTxt, setBtm] = useState<HTMLDivElement | null>(null);
 
   const [players, setPlayers] = useState<Player[]>([{ id: id, user: user, ready: false }]);
   const [gamePhase, setPhase] = useState(0);
@@ -97,20 +99,27 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
     await socket.emit("signal_lobby", payload);
   };
 
+  const enterSend = async (e: any) => { if (e.key == `Enter`) await sendMessage(); }
   const sendMessage = async () => {
     if (outbound !== ``) {
       setChat((msgs) => [...msgs, outbound]);
       const payload = { room: room, user: user, id: id, ready: ready, msg: outbound };
+      console.log(outbound);
       await socket.emit("signal_lobby", payload);
       setOutbound('');
+      btmTxt?.scrollIntoView({ behavior: "smooth" });
     }
   };
+  
 
   useEffect(() => {
 
     socket.on("lobby_poll", (inbound: any) => {
-      if (inbound.code === `lobby`) setPlayers(inbound.players);
-      if (inbound.msg !== ``) setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
+      if (inbound.players !== undefined) setPlayers(inbound.players);
+      if (inbound.msg !== ``) {
+        setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
+        btmTxt?.scrollIntoView({ behavior: "smooth" });
+      }
       if (inbound.code === `start`) setPhase(1);
     });
     
@@ -143,10 +152,9 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       <h3>Chat</h3>
       <ul id='chat'>
         { chat.map((v, i) => { return <li key={i}>{ ` ${v}` }</li> }) }
-
-        <input type='text' onChange={updateOut} value={outbound}/><button onClick={sendMessage}>Send</button>
+        <div ref={(e) => (setBtm(e))}></div>
       </ul>
-      
+      <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend}/><button onClick={sendMessage}>Send</button>
 
       { gamePhase > 0 && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase}/> }
     </div>
