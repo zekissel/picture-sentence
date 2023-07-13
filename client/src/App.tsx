@@ -21,7 +21,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   useEffect(() => {
     socket.on("receive_err", (inbound: any) => {
       if (inbound.err) setErr(inbound.msg);
-      else { setID(inbound.id); game(); }
+      else if (inbound.code === `join`) { setID(inbound.id); game(); }
     });
   }, [socket]);
 

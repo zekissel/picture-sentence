@@ -24,6 +24,7 @@ const waiting = new Map<Key, number>();
 
 type Key = string;
 interface Player {
+  id: number;
   user: string;
   ready: boolean;
 }
@@ -45,8 +46,9 @@ io.on('connection', (socket: any) => {
     }
     else {
       /* servers keeps track of players in room */
-      const p = { user: client.user, ready: false }
+      const p = { id: 0, user: client.user, ready: false }
       LOBBY.set(client.room, [p])
+      active.set(client.room, false);
 
       socket.join(client.room);
       console.log(`User with ID: ${socket.id} is now hosting room: ${client.room}`);
@@ -61,19 +63,19 @@ io.on('connection', (socket: any) => {
     const players = LOBBY.get(client.room);
     if (players !== undefined && !active.get(client.room)) {
       /* room exists, add user to list */
-      const p = { user: client.user, ready: false }
+      const p = { id: players.length, user: client.user, ready: false }
       players.push(p); LOBBY.set(client.room, players);
 
       socket.join(client.room);
       console.log(`User with ID: ${socket.id} joined room: ${client.room}`);
 
+      const payload = { err: false, msg: 'Joining game...', code: `join`, id: players.length - 1 };
+      socket.emit('receive_err', payload);
+
       /* refresh entire lobby after player joins */
       const lobbyLoad = { err: false, msg: `${client.user} has joined the room`, author: `server`, code: `lobby`, players: players };
       socket.to(client.room).emit('lobby_poll', lobbyLoad);
       socket.emit('lobby_poll', lobbyLoad);
-
-      const payload = { err: false, msg: 'Joining game...', code: `join`, id: players.length - 1 };
-      socket.emit('receive_err', payload);
     } else {
       /* return error payload */
       const payload = { err: true, msg: 'Invalid game key!', code: `notfound` };
@@ -89,7 +91,7 @@ io.on('connection', (socket: any) => {
     if (players !== undefined) {
 
       players = players.filter((p) => {
-        return p.user !== client.user;
+        return p.id !== client.id;
       });
       
       if (players.length > 0) {
@@ -98,7 +100,7 @@ io.on('connection', (socket: any) => {
           waiting.set(client.room, waiting.get(client.room)! - 1);
           /* resolve mistmatch of Paper[] with Player[] */
           // either delete paper entries or change client to accept prevAnswer[], then answer multiple in one round
-          
+
         }
 
       } else {
@@ -119,17 +121,18 @@ io.on('connection', (socket: any) => {
     let players = LOBBY.get(client.room);
     if (players !== undefined) {
       players.map((v) => { 
-        if (v.user === client.user) v.ready = client.ready;
+        if (v.id === client.id) v.ready = client.ready;
         return v;
       });
       LOBBY.set(client.room, players);
-      
+
       /* return payload for frontend */
-      const lobbyLoad = { err: false, msg: client.msg, author: client.user, code: `lobby`, players: players };
-      socket.to(client.room).emit('lobby_poll', lobbyLoad);
       const payload = { err: false, msg: 'Ready\'d Up', code: `ready`, ready: client.ready };
       socket.emit('lobby_err', payload);
-
+      
+      const lobbyLoad = { err: false, msg: client.msg, author: client.user, code: `lobby`, players: players };
+      socket.to(client.room).emit('lobby_poll', lobbyLoad);
+      
       let ready = active.get(client.room);
       if (!ready) { 
         ready = true; 

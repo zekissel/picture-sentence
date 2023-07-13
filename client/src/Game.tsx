@@ -3,6 +3,7 @@ import { Socket } from 'socket.io-client';
 import Canvas from './Canvas';
 
 interface Player {
+  id: number;
   user: string;
   ready: boolean;
 }
@@ -83,23 +84,23 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   const updateOut = (e: any) => { setOutbound(e.target.value); }
   const [chat, setChat] = useState<string[]>([]);
 
-  const [players, setPlayers] = useState<Player[]>([{ user: user, ready: false }]);
+  const [players, setPlayers] = useState<Player[]>([{ id: id, user: user, ready: false }]);
   const [gamePhase, setPhase] = useState(0);
 
   const disconnect = async () => {
-    const payload = { room: room, user: user };
+    const payload = { room: room, user: user, id: id };
     await socket.emit("leave_room", payload);
   }
 
   const readyUp = async () => {
-    const payload = { room: room, user: user, ready: !ready, msg: '' };
+    const payload = { room: room, id: id, ready: !ready, msg: '' };
     await socket.emit("signal_lobby", payload);
   };
 
   const sendMessage = async () => {
     if (outbound !== ``) {
       setChat((msgs) => [...msgs, outbound]);
-      const payload = { room: room, user: user, ready: ready, msg: outbound };
+      const payload = { room: room, user: user, id: id, ready: ready, msg: outbound };
       await socket.emit("signal_lobby", payload);
       setOutbound('');
     }
@@ -108,7 +109,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   useEffect(() => {
 
     socket.on("lobby_poll", (inbound: any) => {
-      setPlayers(inbound.players);
+      if (inbound.code === `lobby`) setPlayers(inbound.players);
       if (inbound.msg !== ``) setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
       if (inbound.code === `start`) setPhase(1);
     });
@@ -129,13 +130,13 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   return (
     <div>
       <p>{ err }</p>
-      <button onClick={disconnect}>Exit</button>
+      <button onClick={disconnect}>Exit</button> {id}
       <h3>Players</h3>
       <ul id='playerList'>
         { players.map((v, i) => { 
           return  <li key={i}> { v.user } 
-                    { v.user === user && (gamePhase === 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
-                    { v.user !== user && (gamePhase === 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
+                    { v.id === id && (gamePhase === 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
+                    { v.id !== id && (gamePhase === 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
                   </li> })
         }
       </ul>
