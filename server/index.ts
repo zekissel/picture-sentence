@@ -1,3 +1,5 @@
+import e from "cors";
+
 const express = require("express");
 const app = express();
 const http = require("http");
@@ -16,10 +18,16 @@ const io = new Server(server, {
 });
 
 const LOBBY = new Map<Key, Player[]>();
+const GAME = new Map<Key, Paper[]>();
+const active = new Map<Key, boolean>();
 type Key = string;
 interface Player {
   user: string;
   ready: boolean;
+}
+interface Paper {
+  id: number;
+  answers: string[];
 }
 
 
@@ -41,7 +49,7 @@ io.on('connection', (socket: any) => {
       socket.join(client.room);
       console.log(`User with ID: ${socket.id} is now hosting room: ${client.room}`);
 
-      const payload = { err: false, msg: 'Hosting game...', code: `join` };
+      const payload = { err: false, msg: 'Hosting game...', code: `join`, id: 0 };
       socket.emit('receive_err', payload);
     }
   });
@@ -57,13 +65,13 @@ io.on('connection', (socket: any) => {
       socket.join(client.room);
       console.log(`User with ID: ${socket.id} joined room: ${client.room}`);
 
-      const payload = { err: false, msg: 'Joining game...', code: `join` };
-      socket.emit('receive_err', payload);
-
       /* refresh entire lobby after player joins */
       const lobbyLoad = { err: false, msg: `${client.user} has joined the room`, author: `server`, code: `lobby`, players: players };
       socket.to(client.room).emit('lobby_poll', lobbyLoad);
       socket.emit('lobby_poll', lobbyLoad);
+
+      const payload = { err: false, msg: 'Joining game...', code: `join`, id: players.length - 1 };
+      socket.emit('receive_err', payload);
     } else {
       /* return error payload */
       const payload = { err: true, msg: 'Invalid game key!', code: `notfound` };
@@ -89,7 +97,7 @@ io.on('connection', (socket: any) => {
     }
     /* return payload for frontend */
     const payload = { err: false, msg: 'Exiting game', code: `exit` };
-    socket.emit('receive_err', payload);
+    socket.emit('lobby_err', payload);
   });
 
   /* PLAYER READY FOR GAME */
@@ -106,11 +114,49 @@ io.on('connection', (socket: any) => {
       const lobbyLoad = { err: false, msg: client.msg, author: client.user, code: `lobby`, players: players };
       socket.to(client.room).emit('lobby_poll', lobbyLoad);
       const payload = { err: false, msg: 'Ready\'d Up', code: `ready`, ready: client.ready };
-      socket.emit('receive_err', payload);
+      socket.emit('lobby_err', payload);
+
+      let ready = active.get(client.room);
+      if (!ready) { 
+        ready = true; 
+        players.forEach((p) => { if (!p.ready) ready = false; }); 
+        /* start game if everyone is ready */
+        if (ready) {
+          active.set(client.room, true);
+          const lobbyLoad = { err: false, msg: ``, author: `server`, code: `start`, players: players };
+          socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
+          socket.emit(`lobby_poll`, lobbyLoad);
+        }
+      }
     } else {
       /* return payload for frontend: error */
       const payload = { err: true, msg: `Room not found!`, code: `notfound` };
-      socket.emit('receive_err', payload);
+      socket.emit('lobby_err', payload);
+    }
+  });
+
+  socket.on('signal_game', (client: any) => {
+    if (client.round === 1) {
+
+      let papers = GAME.get(client.room);
+      if (papers === undefined) papers = [];
+      papers[client.id] = { id: client.id, answers: [client.msg] };
+      GAME.set(client.room, papers);
+
+      let gameLoad = { round: client.round, prevAns: ``, idle: true };
+      socket.emit('game_poll', gameLoad);
+
+      const players = LOBBY.get(client.room);
+      if (players?.length === papers.length) {
+        let turn = client.round;
+        while (turn > 0) { papers.unshift(papers.pop()!); turn -= 1; }
+        
+        let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
+        socket.to(client.room).emit('game_poll', gameLoad);
+        socket.emit('game_poll', gameLoad);
+      }
+    } else {
+      
     }
   });
 

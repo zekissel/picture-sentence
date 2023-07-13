@@ -6,6 +6,7 @@ import Game from "./Game";
 const socket = io("http://localhost:5174");
 
 interface ClientProps {
+  setID: React.Dispatch<React.SetStateAction<number>>;
   user: string;
   setUser: React.Dispatch<React.SetStateAction<string>>;
   room: string;
@@ -14,13 +15,13 @@ interface ClientProps {
   game: () => void;
 }
 
-function Join ({ user, setUser, room, setRoom, def, game }: ClientProps) {
+function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
   const [err, setErr] = useState("");
   useEffect(() => {
     socket.on("receive_err", (inbound: any) => {
       if (inbound.err) setErr(inbound.msg);
-      else game();
+      else { setID(inbound.id); game(); }
     });
   }, [socket]);
 
@@ -42,13 +43,13 @@ function Join ({ user, setUser, room, setRoom, def, game }: ClientProps) {
   )
 }
 
-function Host ({ user, setUser, room, setRoom, def, game }: ClientProps) {
+function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
   const [err, setErr] = useState("");
   useEffect(() => {
     socket.on("receive_err", (inbound: any) => {
       if (inbound.err) setErr(inbound.msg);
-      else game();
+      else { setID(inbound.id); game(); }
     });
   }, [socket]);
 
@@ -73,8 +74,9 @@ function Host ({ user, setUser, room, setRoom, def, game }: ClientProps) {
 export default function App() {
   enum MenuMode { Default, Host, Join, Game }
 
-  const [user, setUser] = useState("");
-  const [room, setRoom] = useState("");
+  const [id, setID] = useState(-1);
+  const [user, setUser] = useState(``);
+  const [room, setRoom] = useState(``);
 
   const [toggleMenu, setMenuTog] = useState(MenuMode.Default);
   const host = () => { setMenuTog(MenuMode.Host); }
@@ -94,15 +96,15 @@ export default function App() {
         }
         { toggleMenu === MenuMode.Host &&
 
-          <Host user={user} setUser={setUser} room={room} setRoom={setRoom} def={def} game={game} />
+          <Host setID={setID} user={user} setUser={setUser} room={room} setRoom={setRoom} def={def} game={game} />
         }
         { toggleMenu === MenuMode.Join &&
 
-          <Join user={user} setUser={setUser} room={room} setRoom={setRoom} def={def} game={game}/>
+          <Join setID={setID} user={user} setUser={setUser} room={room} setRoom={setRoom} def={def} game={game}/>
         }
         { toggleMenu === MenuMode.Game &&
 
-          <Game socket={socket} user={user} room={room} def={def} />
+          <Game socket={socket} id={id} user={user} room={room} def={def} />
         }
 
     </div>

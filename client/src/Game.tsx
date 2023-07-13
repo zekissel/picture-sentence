@@ -1,24 +1,82 @@
 import { useEffect, useState } from 'react';
+import { Socket } from 'socket.io-client';
+import Canvas from './Canvas';
 
 interface Player {
   user: string;
   ready: boolean;
 }
 
-interface ChatProps {
-  socket: any;
-  user: string;
+interface GameProps {
+  socket: Socket<any, any>;
   room: string;
+  user: string;
+  id: number;
   def: () => void;
 }
 
-export default function Game({ socket, user, room, def }: ChatProps) {
+interface FieldProps {
+  socket: Socket<any, any>;
+  room: string;
+  id: number;
+  round: number;
+  setRound: React.Dispatch<React.SetStateAction<number>>;
+}
+
+function GameField ({ socket, room, id, round, setRound }: FieldProps) {
+
+  const [prevAnswer, setPrevious] = useState(``);
+  const [curAnswer, setCurrent] = useState(``);
+  const [idle, setIdle] = useState(false);
+  const updateAnswer = (e: any) => { setCurrent(e.target.value); }
+  const submitAnswer = async () => {
+    if (round % 2 === 0) {}
+    if (curAnswer !== ``) {
+      const payload = { room: room, id: id, msg: curAnswer, round: round };
+      setIdle(true);
+      await socket.emit("signal_game", payload);
+      setCurrent(``);
+    }
+  }
+
+  useEffect(() => {
+    socket.on("game_poll", (inbound: any) => {
+      setRound(inbound.round);
+      if (!inbound.idle && inbound.prevAns[id].answers[round - 1] !== ``) setPrevious(inbound.prevAns[id].answers[round - 1]);
+      setIdle(inbound.idle);
+    });
+  });
+
+  return (
+    <div>
+      <h2>Round { round }</h2>
+      <h3>{ round === 1 ? 'Formulate a sentence that is creative or interesting' : round % 2 === 1 ? 'Describe this picture with a sentence' : 'Illustrate this sentence with a picture' }</h3>
+      <div>
+        { prevAnswer }
+      </div>
+
+        { !idle && (round % 2 === 1 ? 
+          <input type='text' placeholder='Your sentence here'onChange={updateAnswer} value={curAnswer}/> :
+          <Canvas width={300} height={250}/> )
+        }
+        {
+          idle && <p>Wait for next round</p>
+        }
+      <button onClick={submitAnswer}>Submit</button>
+    </div>
+  )
+}
+
+export default function Game({ socket, id, user, room, def }: GameProps) {
   const [err, setErr] = useState(``);
   const [ready, setReady] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([{ user: user, ready: false }]);
+  
   const [outbound, setOutbound] = useState(``);
   const updateOut = (e: any) => { setOutbound(e.target.value); }
   const [chat, setChat] = useState<string[]>([]);
+
+  const [players, setPlayers] = useState<Player[]>([{ user: user, ready: false }]);
+  const [gamePhase, setPhase] = useState(0);
 
   const disconnect = async () => {
     const payload = { room: room, user: user };
@@ -40,12 +98,14 @@ export default function Game({ socket, user, room, def }: ChatProps) {
   };
 
   useEffect(() => {
+
     socket.on("lobby_poll", (inbound: any) => {
       setPlayers(inbound.players);
       if (inbound.msg !== ``) setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
+      if (inbound.code === `start`) setPhase(1);
     });
-
-    socket.on("receive_err", (inbound: any) => {
+    
+    socket.on("lobby_err", (inbound: any) => {
       if (inbound.err === false) {
         switch (inbound.code) {
           case 'exit': def(); break;
@@ -55,12 +115,13 @@ export default function Game({ socket, user, room, def }: ChatProps) {
       }
       else setErr(inbound.msg);
     });
-  }, [socket]);
+
+  }, [socket, id]);
 
   return (
     <div>
       <p>{ err }</p>
-      <button onClick={disconnect}>Exit</button>
+      <button onClick={disconnect}>Exit</button> {id}
       <h3>Players</h3>
       <ul>
         { players.map((v, i) => { 
@@ -75,6 +136,8 @@ export default function Game({ socket, user, room, def }: ChatProps) {
         { chat.map((v, i) => { return <li key={i}>{ v }</li> }) }
       </ul>
       <input type='text' onChange={updateOut} value={outbound}/><button onClick={sendMessage}>Send</button>
+
+      { gamePhase > 0 && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase}/> }
     </div>
   );
 }
