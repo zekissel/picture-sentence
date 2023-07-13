@@ -20,6 +20,8 @@ const io = new Server(server, {
 const LOBBY = new Map<Key, Player[]>();
 const GAME = new Map<Key, Paper[]>();
 const active = new Map<Key, boolean>();
+const waiting = new Map<Key, number>();
+
 type Key = string;
 interface Player {
   user: string;
@@ -57,7 +59,7 @@ io.on('connection', (socket: any) => {
   /* JOIN PRE-EXISTING ROOM */
   socket.on('join_room', (client: any) => {
     const players = LOBBY.get(client.room);
-    if (players !== undefined) {
+    if (players !== undefined && !active.get(client.room)) {
       /* room exists, add user to list */
       const p = { user: client.user, ready: false }
       players.push(p); LOBBY.set(client.room, players);
@@ -75,6 +77,7 @@ io.on('connection', (socket: any) => {
     } else {
       /* return error payload */
       const payload = { err: true, msg: 'Invalid game key!', code: `notfound` };
+      if (active.get(client.room)) payload.msg = `Game has already started!`;
       socket.emit('receive_err', payload);
     }
   });
@@ -123,6 +126,7 @@ io.on('connection', (socket: any) => {
         /* start game if everyone is ready */
         if (ready) {
           active.set(client.room, true);
+          waiting.set(client.room, players.length)
           const lobbyLoad = { err: false, msg: ``, author: `server`, code: `start`, players: players };
           socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
           socket.emit(`lobby_poll`, lobbyLoad);
@@ -143,20 +147,49 @@ io.on('connection', (socket: any) => {
       papers[client.id] = { id: client.id, answers: [client.msg] };
       GAME.set(client.room, papers);
 
+      let waitnum: number = waiting.get(client.room)! - 1;
+      waiting.set(client.room, waitnum);
+
       let gameLoad = { round: client.round, prevAns: ``, idle: true };
       socket.emit('game_poll', gameLoad);
 
       const players = LOBBY.get(client.room);
-      if (players?.length === papers.length) {
+      if (waitnum === 0) {
         let turn = client.round;
         while (turn > 0) { papers.unshift(papers.pop()!); turn -= 1; }
         
         let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
         socket.to(client.room).emit('game_poll', gameLoad);
         socket.emit('game_poll', gameLoad);
+        waiting.set(client.room, players!.length)
       }
+    } else if (client.round < 7) {
+
+      const papers = GAME.get(client.room)!;
+      let append_ans = papers[client.id].answers;
+      append_ans = [...append_ans, client.msg];
+      papers[client.id] = { id: client.id, answers: append_ans };
+      GAME.set(client.room, papers);
+
+      let waitnum: number = waiting.get(client.room)! - 1;
+      waiting.set(client.room, waitnum);
+
+      let gameLoad = { round: client.round, prevAns: ``, idle: true };
+      socket.emit('game_poll', gameLoad);
+
+      const players = LOBBY.get(client.room);
+      if (waitnum === 0) {
+        let turn = client.round;
+        while (turn > 0) { papers.unshift(papers.pop()!); turn -= 1; }
+        
+        let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
+        socket.to(client.room).emit('game_poll', gameLoad);
+        socket.emit('game_poll', gameLoad);
+        waiting.set(client.room, players!.length)
+      }
+
     } else {
-      
+
     }
   });
 

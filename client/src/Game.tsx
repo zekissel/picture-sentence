@@ -28,9 +28,9 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
   const [prevAnswer, setPrevious] = useState(``);
   const [curAnswer, setCurrent] = useState(``);
   const [idle, setIdle] = useState(false);
+  const updateImage = (b64: string) => { setCurrent(b64); }
   const updateAnswer = (e: any) => { setCurrent(e.target.value); }
   const submitAnswer = async () => {
-    if (round % 2 === 0) {}
     if (curAnswer !== ``) {
       const payload = { room: room, id: id, msg: curAnswer, round: round };
       setIdle(true);
@@ -50,19 +50,25 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
   return (
     <div>
       <h2>Round { round }</h2>
-      <h3>{ round === 1 ? 'Formulate a sentence that is creative or interesting' : round % 2 === 1 ? 'Describe this picture with a sentence' : 'Illustrate this sentence with a picture' }</h3>
+      <h3>
+        { !idle && (round === 1 ? 'Formulate a sentence that is creative or interesting' : 
+          round % 2 === 1 ? 'Describe this picture with a sentence' : 'Illustrate this sentence with a picture' )
+        }
+      </h3>
       <div>
-        { prevAnswer }
+        { round !== 1 && !idle && (round % 2 === 0 ? prevAnswer :
+          <img src={prevAnswer}/>) 
+        }
       </div>
 
         { !idle && (round % 2 === 1 ? 
           <input type='text' placeholder='Your sentence here'onChange={updateAnswer} value={curAnswer}/> :
-          <Canvas width={300} height={250}/> )
+          <Canvas width={300} height={250} updateImage={updateImage} />)
         }
         {
           idle && <p>Wait for next round</p>
         }
-      <button onClick={submitAnswer}>Submit</button>
+      { !idle && <button onClick={submitAnswer}>Submit</button> }
     </div>
   )
 }
@@ -121,7 +127,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   return (
     <div>
       <p>{ err }</p>
-      <button onClick={disconnect}>Exit</button> {id}
+      <button onClick={disconnect}>Exit</button>
       <h3>Players</h3>
       <ul>
         { players.map((v, i) => { 

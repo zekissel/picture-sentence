@@ -6,14 +6,19 @@ type Color = `#${string}`;
 interface CanvasProps {
     width: number;
     height: number;
+    updateImage: (b64: string) => void;
 }
 
-const Canvas = ({ width, height }: CanvasProps) => {
+const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
-    const { setCanvasRef, onCanvasMouseDown } = useOnDraw(onDraw);
+    const { setCanvasRef, onCanvasMouseDown, getImage } = useOnDraw(onDraw);
 
     function onDraw(ctx: CanvasRenderingContext2D | null, point: Point | null, prevPoint: Point | null) {
         drawLine(prevPoint, point, ctx, '#000000', 4);
+    }
+
+    function exportImage () {
+        updateImage(getImage());
     }
 
     function drawLine(start: Point | null, end: Point | null, ctx: CanvasRenderingContext2D | null, color: Color, width: number) {
@@ -31,17 +36,19 @@ const Canvas = ({ width, height }: CanvasProps) => {
         ctx.beginPath();
         ctx.arc(start.x, start.y, 2, 0, 2 * Math.PI);
         ctx.fill();
-
     }
 
     return(
-        <canvas
-            width={width}
-            height={height}
-            onMouseDown={onCanvasMouseDown}
-            style={canvasStyle}
-            ref={setCanvasRef}
-        />
+        <div>
+            <canvas id='image'
+                width={width}
+                height={height}
+                onMouseDown={onCanvasMouseDown}
+                onMouseUp={exportImage}
+                style={canvasStyle}
+                ref={setCanvasRef}
+            />
+        </div>
     );
 }
 

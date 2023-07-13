@@ -20,6 +20,11 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
         isDrawingRef.current = true;
     }
 
+    function getImage () {
+        if (canvasRef.current) return canvasRef.current.toDataURL();
+        else return `Err`;
+    }
+
     useEffect(() => {
         function computePointInCanvas(clientX: number, clientY: number) {
             if (canvasRef.current) {
@@ -68,5 +73,5 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
 
     }, [onDraw]);
 
-    return { setCanvasRef, onCanvasMouseDown }
+    return { setCanvasRef, onCanvasMouseDown, getImage }
 };
