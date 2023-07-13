@@ -47,6 +47,8 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
     });
   });
 
+  const imgStyle = { background: `#FFF` }
+
   return (
     <div>
       <h2>Round { round }</h2>
@@ -57,7 +59,7 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
       </h3>
       <div>
         { round !== 1 && !idle && (round % 2 === 0 ? prevAnswer :
-          <img src={prevAnswer}/>) 
+          <img src={prevAnswer} style={imgStyle}/>) 
         }
       </div>
 
@@ -129,19 +131,21 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       <p>{ err }</p>
       <button onClick={disconnect}>Exit</button>
       <h3>Players</h3>
-      <ul>
+      <ul id='playerList'>
         { players.map((v, i) => { 
           return  <li key={i}> { v.user } 
-                    { v.user === user && <button onClick={readyUp}> { ready ? 'Cancel' : 'Ready' }</button> }
-                    { v.user !== user && <label> { v.ready ? '✓' : '✗' }</label> }
+                    { v.user === user && (gamePhase === 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
+                    { v.user !== user && (gamePhase === 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
                   </li> })
         }
       </ul>
       <h3>Chat</h3>
-      <ul>
-        { chat.map((v, i) => { return <li key={i}>{ v }</li> }) }
+      <ul id='chat'>
+        { chat.map((v, i) => { return <li key={i}>{ ` ${v}` }</li> }) }
+
+        <input type='text' onChange={updateOut} value={outbound}/><button onClick={sendMessage}>Send</button>
       </ul>
-      <input type='text' onChange={updateOut} value={outbound}/><button onClick={sendMessage}>Send</button>
+      
 
       { gamePhase > 0 && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase}/> }
     </div>

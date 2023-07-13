@@ -92,9 +92,20 @@ io.on('connection', (socket: any) => {
         return p.user !== client.user;
       });
       
-      if (players.length > 0) LOBBY.set(client.room, players);
-      else {
+      if (players.length > 0) {
+        LOBBY.set(client.room, players);
+        if (active.get(client.room)) {
+          waiting.set(client.room, waiting.get(client.room)! - 1);
+          /* resolve mistmatch of Paper[] with Player[] */
+          // either delete paper entries or change client to accept prevAnswer[], then answer multiple in one round
+          
+        }
+
+      } else {
         LOBBY.delete(client.room);
+        GAME.delete(client.room);
+        active.delete(client.room);
+        waiting.delete(client.room);
         console.log(`Room ${client.room} returned to available keys.`);
       }
     }
@@ -140,55 +151,42 @@ io.on('connection', (socket: any) => {
   });
 
   socket.on('signal_game', (client: any) => {
+    const papers: Paper[] = GAME.get(client.room) ?? [];
+
     if (client.round === 1) {
 
-      let papers = GAME.get(client.room);
-      if (papers === undefined) papers = [];
       papers[client.id] = { id: client.id, answers: [client.msg] };
-      GAME.set(client.room, papers);
+      
+    } else {
 
-      let waitnum: number = waiting.get(client.room)! - 1;
-      waiting.set(client.room, waitnum);
-
-      let gameLoad = { round: client.round, prevAns: ``, idle: true };
-      socket.emit('game_poll', gameLoad);
-
-      const players = LOBBY.get(client.room);
-      if (waitnum === 0) {
-        let turn = client.round;
-        while (turn > 0) { papers.unshift(papers.pop()!); turn -= 1; }
-        
-        let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
-        socket.to(client.room).emit('game_poll', gameLoad);
-        socket.emit('game_poll', gameLoad);
-        waiting.set(client.room, players!.length)
-      }
-    } else if (client.round < 7) {
-
-      const papers = GAME.get(client.room)!;
       let append_ans = papers[client.id].answers;
       append_ans = [...append_ans, client.msg];
       papers[client.id] = { id: client.id, answers: append_ans };
-      GAME.set(client.room, papers);
+      
+    }
+    /* save edit to paper */
+    GAME.set(client.room, papers);
 
-      let waitnum: number = waiting.get(client.room)! - 1;
-      waiting.set(client.room, waitnum);
+    /* waiting for one less player to answer */
+    let waitnum: number = waiting.get(client.room)! - 1;
+    waiting.set(client.room, waitnum);
 
-      let gameLoad = { round: client.round, prevAns: ``, idle: true };
+    let gameLoad = { round: client.round, prevAns: ``, idle: true };
+    socket.emit('game_poll', gameLoad);
+
+    if (waitnum === 0 && client.round < 7) {
+      papers.unshift(papers.pop()!);
+      
+      /* distribute previous answers and progress rounds */
+      let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
+      socket.to(client.room).emit('game_poll', gameLoad);
       socket.emit('game_poll', gameLoad);
 
-      const players = LOBBY.get(client.room);
-      if (waitnum === 0) {
-        let turn = client.round;
-        while (turn > 0) { papers.unshift(papers.pop()!); turn -= 1; }
-        
-        let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
-        socket.to(client.room).emit('game_poll', gameLoad);
-        socket.emit('game_poll', gameLoad);
-        waiting.set(client.room, players!.length)
-      }
-
-    } else {
+      /* reset waiting number */
+      const numP = LOBBY.get(client.room)!.length;
+      waiting.set(client.room, numP)
+    } else if (waitnum === 0) {
+      /* last round end */
 
     }
   });

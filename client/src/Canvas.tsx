@@ -55,5 +55,6 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 export default Canvas;
 
 const canvasStyle = {
-    border: "1px solid black"
+    border: "1px solid black",
+    background: `#FFF`,
 }

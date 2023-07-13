@@ -11,3 +11,32 @@ body {
   margin: 0;
   padding: 0;
 }
+
+ul, menu, li {
+  text-decoration: none;
+  list-style: none;
+  margin: 0;
+  padding: 1% 0;
+}
+
+button {
+  align-content: center;
+  color: #EEE;
+  background-color: #333;
+  width: 15vw;
+  height: 3.5vh;
+}
+
+input {
+  width: 20vw;
+  height: 3vh;
+}
+
+#playerList, #chat {
+  background-color: #545652;
+}
+
+#ready {
+  width: auto;
+  height: 3vh;
+}
