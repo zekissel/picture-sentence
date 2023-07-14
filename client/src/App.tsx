@@ -104,7 +104,7 @@ export default function App() {
         }
         { toggleMenu === MenuMode.Game &&
 
-          <Game socket={socket} id={id} user={user} room={room} def={def} />
+          <div id="game"><Game socket={socket} id={id} user={user} room={room} def={def} /></div>
         }
 
     </div>

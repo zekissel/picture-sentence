@@ -1,15 +1,38 @@
-#root {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
 
 body {
   width: 100vw;
   height: 100vh;
   margin: 0;
   padding: 0;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  min-height: 60vh;
+}
+
+#game {
+  display: flex;
+  flex-direction: row;
+  flex-grow: 2;
+}
+
+#lobby {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+#field {
+  background-color: #545652;
+  padding: 2%;
+  margin: 0 1%;
+  flex-grow: 3;
+  min-width: 40vw;
 }
 
 ul, menu, li {
@@ -20,7 +43,6 @@ ul, menu, li {
 }
 
 button {
-  align-content: center;
   color: #EEE;
   background-color: #333;
   width: 15vw;
@@ -32,16 +54,15 @@ input {
   height: 3vh;
 }
 
-#playerList {
+#chat, #playerList {
+  
   background-color: #545652;
-  padding: 1%;
-}
-
-#chat {
-  background-color: #545652;
+  min-height: 10vh;
   max-height: 15vh;
   overflow: scroll;
+  overflow-x: hidden;
   padding: 1%;
+  width: 20vw;
 }
 
 #ready {

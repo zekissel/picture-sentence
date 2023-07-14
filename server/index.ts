@@ -191,7 +191,19 @@ io.on('connection', (socket: any) => {
       waiting.set(client.room, numP)
     } else if (waitnum === 0) {
       /* last round end */
+      const gameLoad = { round: -1, prevAns: papers, idle: false, code: `end`};
+      socket.to(client.room).emit('game_poll', gameLoad);
+      socket.emit('game_poll', gameLoad);
 
+      const players = LOBBY.get(client.room)!;
+      players.map((v) => { 
+        v.ready = false;
+        return v;
+      });
+      LOBBY.set(client.room, players);
+      active.set(client.room, false);
+      GAME.delete(client.room);
+      waiting.set(client.room, players.length);
     }
   });
 

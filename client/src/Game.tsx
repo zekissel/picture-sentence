@@ -8,6 +8,11 @@ interface Player {
   ready: boolean;
 }
 
+interface Paper {
+  id: number;
+  answers: string[];
+}
+
 interface GameProps {
   socket: Socket<any, any>;
   room: string;
@@ -26,9 +31,12 @@ interface FieldProps {
 
 function GameField ({ socket, room, id, round, setRound }: FieldProps) {
 
+  const [allPapers, setAll] = useState<Paper[]>([]);
+
   const [prevAnswer, setPrevious] = useState(``);
   const [curAnswer, setCurrent] = useState(``);
   const [idle, setIdle] = useState(false);
+
   const updateImage = (b64: string) => { setCurrent(b64); }
   const updateAnswer = (e: any) => { setCurrent(e.target.value); }
   const enterSubmit = async (e: any) => { if (e.key == `Enter`) await submitAnswer(); }
@@ -44,36 +52,50 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
   useEffect(() => {
     socket.on("game_poll", (inbound: any) => {
       setRound(inbound.round);
-      if (!inbound.idle && inbound.prevAns[id].answers[round - 1] !== ``) setPrevious(inbound.prevAns[id].answers[round - 1]);
       setIdle(inbound.idle);
+      if (!inbound.idle && inbound.prevAns[id].answers[round - 1] !== ``) setPrevious(inbound.prevAns[id].answers[round - 1]);
+      if (inbound.code === `end`) { setAll(inbound.prevAns); setPrevious(``); }
     });
   });
 
   const imgStyle = { background: `#FFF` }
 
   return (
-    <div>
-      <h2>Round { round }</h2>
+    <>
+      <h2>Round { round >= 0 ? round : `End` }</h2>
       <h3>
-        { !idle && (round === 1 ? 'Formulate a sentence that is creative or interesting' : 
-          round % 2 === 1 ? 'Describe this picture with a sentence' : 'Illustrate this sentence with a picture' )
+        { (!idle && round > -1) && (round === 1 ? 'Formulate a sentence that is creative or interesting:' : 
+          round % 2 === 1 ? 'Describe this picture with a sentence:' : 'Illustrate this sentence:' )
         }
       </h3>
-      <div>
-        { round !== 1 && !idle && (round % 2 === 0 ? prevAnswer :
+      <div id='prev'>
+        { (round > -1 && !idle) && (round % 2 === 0 ? prevAnswer :
           <img src={prevAnswer} style={imgStyle}/>) 
         }
       </div>
 
-        { !idle && (round % 2 === 1 ? 
+        { (!idle && round > -1) && (round % 2 === 1 ? 
           <input type='text' placeholder='Your sentence here'onChange={updateAnswer} value={curAnswer} onKeyDown={enterSubmit}/> :
-          <Canvas width={300} height={250} updateImage={updateImage} />)
+          <Canvas width={400} height={300} updateImage={updateImage} />)
         }
         {
-          idle && <p>Wait for next round</p>
+          (idle && round >= 0) && <p>Wait for next round</p>
         }
-      { !idle && <button onClick={submitAnswer}>Submit</button> }
-    </div>
+      { (!idle && round > -1) && <button onClick={submitAnswer}>Submit</button> }
+
+      { round === -1 &&
+        allPapers.map((val, ind) => {
+          return (<ul key={ind} className='paper'>
+            { val.answers.map((v, i) => {
+              return (<li key={i}>
+                { i % 2 == 0 ? v : <img src={v} style={imgStyle} /> }
+              </li>)
+              }) 
+            }
+          </ul>)
+        })
+      }
+    </>
   )
 }
 
@@ -104,7 +126,6 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
     if (outbound !== ``) {
       setChat((msgs) => [...msgs, outbound]);
       const payload = { room: room, user: user, id: id, ready: ready, msg: outbound };
-      console.log(outbound);
       await socket.emit("signal_lobby", payload);
       setOutbound('');
       btmTxt?.scrollIntoView({ behavior: "smooth" });
@@ -120,7 +141,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
         setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
         btmTxt?.scrollIntoView({ behavior: "smooth" });
       }
-      if (inbound.code === `start`) setPhase(1);
+      if (inbound.code === `start`) { setPhase(1); setReady(false); }
     });
     
     socket.on("lobby_err", (inbound: any) => {
@@ -136,27 +157,34 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
 
   }, [socket, id]);
 
-  return (
-    <div>
-      <p>{ err }</p>
-      <button onClick={disconnect}>Exit</button> {id}
-      <h3>Players</h3>
-      <ul id='playerList'>
-        { players.map((v, i) => { 
-          return  <li key={i}> { v.user } 
-                    { v.id === id && (gamePhase === 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
-                    { v.id !== id && (gamePhase === 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
-                  </li> })
-        }
-      </ul>
-      <h3>Chat</h3>
-      <ul id='chat'>
-        { chat.map((v, i) => { return <li key={i}>{ ` ${v}` }</li> }) }
-        <div ref={(e) => (setBtm(e))}></div>
-      </ul>
-      <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend}/><button onClick={sendMessage}>Send</button>
+  const regCol = {background: `#545652`};
+  const altCol = {background: `#445652`};
 
-      { gamePhase > 0 && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase}/> }
-    </div>
+  return (
+    <>
+      <div id='lobby'>
+        <p>{ err }</p>
+        <button onClick={disconnect}>Exit Room</button>
+        <h3>Players</h3>
+        <ul id='playerList'>
+          { players.map((v, i) => { 
+            return  <li key={i}> { v.user } 
+                      { v.id === id && (gamePhase <= 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
+                      { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
+                    </li> })
+          }
+        </ul>
+        <h3>Chat</h3>
+        <ul id='chat'>
+          { chat.map((v, i) => { return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { ` ${v}` }</li> }) }
+          <div ref={(e) => (setBtm(e))}></div>
+        </ul>
+        <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend}/><button onClick={sendMessage}>Send Message</button>
+      </div>
+
+      <div id='field'>
+        { (gamePhase > 0 || gamePhase === -1) && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase}/> }
+      </div>
+    </>
   );
 }
