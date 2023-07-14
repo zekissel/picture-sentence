@@ -101,10 +101,11 @@ io.on('connection', (socket: any) => {
         if (active.get(client.room)) {
           waiting.set(client.room, waiting.get(client.room)! - 1);
           /* resolve mistmatch of Paper[] with Player[] */
-          // either delete paper entries or change client to accept prevAnswer[], then answer multiple in one round
-
+          let papers = GAME.get(client.room);
+          papers = papers?.filter((p) => { return p.id !== client.id; });
+          if (papers) GAME.set(client.room, papers);
         }
-
+        /* remove room, no active players */
       } else {
         LOBBY.delete(client.room);
         GAME.delete(client.room);

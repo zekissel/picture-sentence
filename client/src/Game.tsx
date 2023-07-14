@@ -14,6 +14,11 @@ interface Paper {
   answers: string[];
 }
 
+interface PaperProps {
+  paper: Paper;
+  index: number;
+}
+
 interface GameProps {
   socket: Socket<any, any>;
   room: string;
@@ -29,6 +34,25 @@ interface FieldProps {
   round: number;
   setRound: React.Dispatch<React.SetStateAction<number>>;
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
+}
+
+function FoldPaper ({ paper, index }: PaperProps) {
+
+  const [visible, setVisible] = useState(false);
+  const toggleVisible = () => { setVisible(!visible); }
+
+  const imgStyle = { background: `#FFF` }
+
+  return (
+    <ul className='paper' key={index}>
+      { paper.answers.map((val, ind) => { 
+          return <li key={ind} onClick={ind == 0 ? toggleVisible : undefined}>
+                  { ind != 0 && visible && (ind % 2 == 0 ? val : <img src={val} style={imgStyle}/>) }
+                  { ind == 0 && val }
+                 </li>
+        }) }
+    </ul>
+  )
 }
 
 function GameField ({ socket, room, id, round, setRound, setPlayers }: FieldProps) {
@@ -88,14 +112,7 @@ function GameField ({ socket, room, id, round, setRound, setPlayers }: FieldProp
 
       { round === -1 &&
         allPapers.map((val, ind) => {
-          return (<ul key={ind} className='paper'>
-            { val.answers.map((v, i) => {
-              return (<li key={i}>
-                { i % 2 == 0 ? v : <img src={v} style={imgStyle} /> }
-              </li>)
-              }) 
-            }
-          </ul>)
+          return <FoldPaper paper={val} index={ind} />
         })
       }
     </>
