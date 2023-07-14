@@ -27,6 +27,7 @@ interface Player {
   id: number;
   user: string;
   ready: boolean;
+  wait: boolean;
   socket: string;
 }
 interface Paper {
@@ -47,7 +48,7 @@ io.on('connection', (socket: any) => {
     }
     else {
       /* servers keeps track of players in room */
-      const p = { id: 0, user: client.user, ready: false, socket: socket.id }
+      const p = { id: 0, user: client.user, ready: false, wait: true, socket: socket.id }
       LOBBY.set(client.room, [p])
       active.set(client.room, false);
 
@@ -64,7 +65,7 @@ io.on('connection', (socket: any) => {
     const players = LOBBY.get(client.room);
     if (players !== undefined && !active.get(client.room)) {
       /* room exists, add user to list */
-      const p = { id: players.length, user: client.user, ready: false, socket: socket.id }
+      const p = { id: players.length, user: client.user, ready: false, wait:true, socket: socket.id }
       players.push(p); LOBBY.set(client.room, players);
 
       socket.join(client.room);
@@ -174,9 +175,15 @@ io.on('connection', (socket: any) => {
     /* waiting for one less player to answer */
     let waitnum: number = waiting.get(client.room)! - 1;
     waiting.set(client.room, waitnum);
+    const players = LOBBY.get(client.room)!;
+    players.map((p) => { if (p.id === client.id) p.wait = false; return p; });
+    LOBBY.set(client.room, players);
 
-    let gameLoad = { round: client.round, prevAns: ``, idle: true };
-    socket.emit('game_poll', gameLoad);
+
+    let singleLoad = { round: client.round, prevAns: ``, idle: true, players: players };
+    socket.emit('game_poll', singleLoad);
+    let gameLoad = { round: client.round, prevAns: ``, players: players };
+    socket.to(client.room).emit('game_poll', gameLoad);
 
     if (waitnum === 0 && client.round < 7) {
       papers.unshift(papers.pop()!);
@@ -196,11 +203,10 @@ io.on('connection', (socket: any) => {
       socket.emit('game_poll', gameLoad);
 
       const players = LOBBY.get(client.room)!;
-      players.map((v) => { 
-        v.ready = false;
-        return v;
-      });
+      players.map((p) => { p.ready = false; return p; });
+      players.map((p) => { p.wait = true; return p; });
       LOBBY.set(client.room, players);
+
       active.set(client.room, false);
       GAME.delete(client.room);
       waiting.set(client.room, players.length);
@@ -213,8 +219,15 @@ io.on('connection', (socket: any) => {
     console.log(`User Disconnected`, socket.id);
     const lobbies = LOBBY.entries();
     for (let room of lobbies) {
-      room[1] = room[1].filter((p) => {
-        return p.socket !== socket.id;
+      room[1] = room[1].filter((player) => {
+        if (player.socket === socket.id) {
+          /* remove players paper, lower wait count, remove player */
+          let papers = GAME.get(room[0]);
+          papers = papers?.filter((p) => { return p.id !== player.id; });
+          if (papers) GAME.set(room[0], papers);
+          waiting.set(room[0], (waiting.get(room[0])! - 1 >= 0) ? waiting.get(room[0])! - 1 : 0);
+        }
+        return player.socket !== socket.id;
       });
       LOBBY.set(room[0], room[1]);
     }

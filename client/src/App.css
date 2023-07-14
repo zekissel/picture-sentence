@@ -65,6 +65,10 @@ input {
   width: 20vw;
 }
 
+#chat, #playerList > li {
+  padding: 0 2%;
+}
+
 #ready {
   width: auto;
   height: 3vh;

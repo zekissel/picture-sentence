@@ -6,6 +6,7 @@ interface Player {
   id: number;
   user: string;
   ready: boolean;
+  wait: boolean;
 }
 
 interface Paper {
@@ -27,9 +28,10 @@ interface FieldProps {
   id: number;
   round: number;
   setRound: React.Dispatch<React.SetStateAction<number>>;
+  setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
 }
 
-function GameField ({ socket, room, id, round, setRound }: FieldProps) {
+function GameField ({ socket, room, id, round, setRound, setPlayers }: FieldProps) {
 
   const [allPapers, setAll] = useState<Paper[]>([]);
 
@@ -52,8 +54,9 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
   useEffect(() => {
     socket.on("game_poll", (inbound: any) => {
       setRound(inbound.round);
-      setIdle(inbound.idle);
-      if (!inbound.idle && inbound.prevAns[id].answers[round - 1] !== ``) setPrevious(inbound.prevAns[id].answers[round - 1]);
+      if (inbound.idle !== undefined) setIdle(inbound.idle);
+      if (inbound.players !== undefined) setPlayers(inbound.players);
+      if (inbound.prevAns && inbound.prevAns[id].answers && inbound.prevAns[id].answers[round - 1] !== ``) setPrevious(inbound.prevAns[id].answers[round - 1]);
       if (inbound.code === `end`) { setAll(inbound.prevAns); setPrevious(``); }
     });
   });
@@ -75,8 +78,8 @@ function GameField ({ socket, room, id, round, setRound }: FieldProps) {
       </div>
 
         { (!idle && round > -1) && (round % 2 === 1 ? 
-          <input type='text' placeholder='Your sentence here'onChange={updateAnswer} value={curAnswer} onKeyDown={enterSubmit}/> :
-          <Canvas width={400} height={300} updateImage={updateImage} />)
+          <input type='text' placeholder='Your sentence here' onChange={updateAnswer} value={curAnswer} onKeyDown={enterSubmit}/> :
+          <Canvas width={400} height={267} updateImage={updateImage} />)
         }
         {
           (idle && round >= 0) && <p>Wait for next round</p>
@@ -108,7 +111,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   const [chat, setChat] = useState<string[]>([]);
   const [btmTxt, setBtm] = useState<HTMLDivElement | null>(null);
 
-  const [players, setPlayers] = useState<Player[]>([{ id: id, user: user, ready: false }]);
+  const [players, setPlayers] = useState<Player[]>([{ id: id, user: user, ready: false, wait: true }]);
   const [gamePhase, setPhase] = useState(0);
 
   const disconnect = async () => {
@@ -171,6 +174,9 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
             return  <li key={i}> { v.user } 
                       { v.id === id && (gamePhase <= 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
                       { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
+
+                      { v.id === id && (gamePhase > 0 && <label>{ !v.wait ? '✓' : '✗' }</label>)}
+                      { v.id !== id && (gamePhase > 0 && <label>{ !v.wait ? '✓' : '✗' }</label>)}
                     </li> })
           }
         </ul>
@@ -183,7 +189,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       </div>
 
       <div id='field'>
-        { (gamePhase > 0 || gamePhase === -1) && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase}/> }
+        { (gamePhase > 0 || gamePhase === -1) && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setPlayers={setPlayers} /> }
       </div>
     </>
   );
