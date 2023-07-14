@@ -119,6 +119,8 @@ function GameField ({ socket, room, id, round, setRound, setPlayers }: FieldProp
   )
 }
 
+
+
 export default function Game({ socket, id, user, room, def }: GameProps) {
   const [err, setErr] = useState(``);
   const [ready, setReady] = useState(false);
@@ -192,8 +194,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
                       { v.id === id && (gamePhase <= 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
                       { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
 
-                      { v.id === id && (gamePhase > 0 && <label>{ !v.wait ? '✓' : '✗' }</label>)}
-                      { v.id !== id && (gamePhase > 0 && <label>{ !v.wait ? '✓' : '✗' }</label>)}
+                      { gamePhase > 0 && <label>{ v.wait === false ? '✓' : '✗' }</label> }
                     </li> })
           }
         </ul>

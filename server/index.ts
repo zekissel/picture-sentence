@@ -1,18 +1,15 @@
-import e from "cors";
-
 const express = require("express");
-const app = express();
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
-app.use(cors());
 
+const app = express(); app.use(cors());
 const server = http.createServer(app);
-const SOCKETPORT = 5174;
-
+const CLIENT_PORT = 5173;
+const SOCKET_PORT = 5174;
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: `http://localhost:${CLIENT_PORT}`,
     methods: ["GET", "POST"],
   },
 });
@@ -187,16 +184,19 @@ io.on('connection', (socket: any) => {
     socket.to(client.room).emit('game_poll', gameLoad);
 
     if (waitnum === 0 && client.round < 7) {
-      papers.unshift(papers.pop()!);
-      
-      /* distribute previous answers and progress rounds */
-      let gameLoad = { round: client.round + 1, prevAns: papers, idle: false };
-      socket.to(client.room).emit('game_poll', gameLoad);
-      socket.emit('game_poll', gameLoad);
-
       /* reset waiting number */
       const numP = LOBBY.get(client.room)!.length;
       waiting.set(client.room, numP)
+      players.map((p) => { p.wait = true; return p; });
+      LOBBY.set(client.room, players);
+
+      papers.unshift(papers.pop()!);
+      
+      /* distribute previous answers and progress rounds */
+      let gameLoad = { round: client.round + 1, prevAns: papers, idle: false, players: players };
+      socket.to(client.room).emit('game_poll', gameLoad);
+      socket.emit('game_poll', gameLoad);
+      
     } else if (waitnum === 0) {
       /* last round end */
       const gameLoad = { round: -1, prevAns: papers, idle: false, code: `end`};
@@ -235,6 +235,6 @@ io.on('connection', (socket: any) => {
   });
 });
 
-server.listen(SOCKETPORT, () => {
-  console.log(`SERVER RUNNING ON PORT: ${SOCKETPORT}`);
+server.listen(SOCKET_PORT, () => {
+  console.log(`SERVER RUNNING ON PORT: ${SOCKET_PORT}`);
 });
