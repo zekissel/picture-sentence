@@ -5,6 +5,7 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 
+/* --------------- SERVER STATICS */
 const app = express(); app.use(cors());
 const server = http.createServer(app);
 const CLIENT_PORT = 5173;
@@ -16,6 +17,7 @@ const io = new Server(server, {
   },
 });
 
+/* --------------- TYPE ANNOTATIONS */
 type Key = string;
 interface Actor {
   socket: string;
@@ -37,6 +39,7 @@ interface InboundMenu { room: string; user: string; }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
 
+/* --------------- GAME VARIABLES */
 const MAX_ROUND = 7;
 
 const LOBBY = new Map<Key, Actor[]>();
@@ -48,6 +51,7 @@ const isActive = (room: string) => {
   return active !== undefined;
 }
 
+/* --------------- HELPER FUNCTIONS */
 const playerJoin = (socket: Socket, room: string, user: string, serverReply: Callback) => {
 
   const actors = LOBBY.get(room);
@@ -116,8 +120,22 @@ const playerExit = (socket: Socket) => {
   }
 }
 
+const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
+  let ready = true;
+  actors.forEach((a) => { if (!a.ready) ready = false; });
+  if (ready) {
+    actors.map((v) => { v.ready = false; return v; });
+    LOBBY.set(room, actors);
+    GAME.set(room, []);
+
+    const lobbyLoad = { status: `start`, msg: ``, author: `server`, actors: actors, code: 0 };
+    socket.to(room).emit(`lobby_poll`, lobbyLoad);
+    socket.emit(`lobby_poll`, lobbyLoad);
+  }
+}
 
 
+/* --------------- WEBSOCKET ROUTES */
 io.on('connection', (socket: Socket) => {
   console.log(`User Connected: ${socket.id}`);
 
@@ -181,24 +199,12 @@ io.on('connection', (socket: Socket) => {
     serverReply(payload);
 
     /* determine when to start game */
-    let ready = isActive(client.room);
-    if (!ready) {
-      ready = true;
-      actors.forEach((a) => { if (!a.ready) ready = false; });
-      if (ready) {
-        actors.map((v) => { v.ready = false; return v; });
-        LOBBY.set(client.room, actors);
-        GAME.set(client.room, []);
-
-        const lobbyLoad = { status: `start`, msg: ``, author: `server`, actors: actors, code: 0 };
-        socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
-        socket.emit(`lobby_poll`, lobbyLoad);
-      }
-    }
+    if (!isActive(client.room)) determineStart(socket, client.room, actors);
 
   });
 
 
+  /* game control logic: handle players submitting answers and round progression */
   socket.on('signal_game', (client: InboundGame, serverReply: Callback) => {
 
     const papers: Paper[] = GAME.get(client.room) ?? [];
@@ -241,6 +247,7 @@ io.on('connection', (socket: Socket) => {
       socket.emit('game_poll', gameLoad);
 
     } else if (done) {
+      /* end game */
 
       actors.map((a) => { a.ready = false; return a; });
       LOBBY.set(client.room, actors);
