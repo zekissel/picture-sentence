@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import Canvas from './Canvas';
 
-interface Player {
+interface Actor {
   id: number;
   user: string;
   ready: boolean;
-  wait: boolean;
 }
 
 interface Paper {
@@ -33,8 +32,13 @@ interface FieldProps {
   id: number;
   round: number;
   setRound: React.Dispatch<React.SetStateAction<number>>;
-  setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
+  setActors: React.Dispatch<React.SetStateAction<Actor[]>>;
 }
+
+interface LobbyResponse { status: string; msg: string; author: string, code: number, actors: Actor[] }
+interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
+
+
 
 function FoldPaper ({ paper, index }: PaperProps) {
 
@@ -55,7 +59,7 @@ function FoldPaper ({ paper, index }: PaperProps) {
   )
 }
 
-function GameField ({ socket, room, id, round, setRound, setPlayers }: FieldProps) {
+function GameField ({ socket, room, id, round, setRound, setActors }: FieldProps) {
 
   const [allPapers, setAll] = useState<Paper[]>([]);
 
@@ -65,23 +69,28 @@ function GameField ({ socket, room, id, round, setRound, setPlayers }: FieldProp
 
   const updateImage = (b64: string) => { setCurrent(b64); }
   const updateAnswer = (e: any) => { setCurrent(e.target.value); }
-  const enterSubmit = async (e: any) => { if (e.key == `Enter`) await submitAnswer(); }
-  const submitAnswer = async () => {
+
+  const enterSubmit = (e: any) => { if (e.key == `Enter`) submitAnswer(); }
+  const submitAnswer = () => {
     if (curAnswer !== ``) {
       const payload = { room: room, id: id, msg: curAnswer, round: round };
-      setIdle(true);
-      await socket.emit("signal_game", payload);
+      socket.emit("signal_game", payload, (res: GameResponse) => {
+        if (res.msg?.length > 0) setPrevious(res.msg[id].answers[round - 1]);
+        if (res.actors) setActors(res.actors);
+        if (res.ready) setIdle(res.ready);
+        setRound(res.code);
+      });
       setCurrent(``);
     }
   }
 
   useEffect(() => {
     socket.on("game_poll", (inbound: any) => {
-      setRound(inbound.round);
-      if (inbound.idle !== undefined) setIdle(inbound.idle);
-      if (inbound.players !== undefined) setPlayers(inbound.players);
-      if (inbound.prevAns && inbound.prevAns[id].answers && inbound.prevAns[id].answers[round - 1] !== ``) setPrevious(inbound.prevAns[id].answers[round - 1]);
-      if (inbound.code === `end`) { setAll(inbound.prevAns); setPrevious(``); }
+      setRound(inbound.code);
+      if (inbound.ready !== undefined) setIdle(inbound.ready);
+      if (inbound.actors !== undefined) setActors(inbound.actors);
+      if (inbound.msg?.length > 0) setPrevious(inbound.msg[id].answers[round - 1]);
+      if (inbound.code === -1) { setAll(inbound.msg); setPrevious(``); }
     });
   });
 
@@ -130,25 +139,37 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   const [chat, setChat] = useState<string[]>([]);
   const [btmTxt, setBtm] = useState<HTMLDivElement | null>(null);
 
-  const [players, setPlayers] = useState<Player[]>([{ id: id, user: user, ready: false, wait: true }]);
+  const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false }]);
   const [gamePhase, setPhase] = useState(0);
 
-  const disconnect = async () => {
+  const disconnect = () => {
     const payload = { room: room, user: user, id: id };
-    await socket.emit("leave_room", payload);
+    socket.emit("exit_room", payload); def();
   }
 
-  const readyUp = async () => {
-    const payload = { room: room, id: id, ready: !ready, msg: '' };
-    await socket.emit("signal_lobby", payload);
+  const readyUp = () => {
+    const payload = { room: room, user: user, id: id, ready: !ready, msg: `` };
+    socket.emit(`signal_lobby`, payload, (res: LobbyResponse) => {
+      switch (res.status) {
+        case `err`: setErr(res.msg); break;
+        case `ok`: setReady(res.code > 0 ? true : false); break;
+        default: break;
+      }
+    });
   };
 
-  const enterSend = async (e: any) => { if (e.key == `Enter`) await sendMessage(); }
-  const sendMessage = async () => {
+  const enterSend = (e: any) => { if (e.key == `Enter`) sendMessage(); }
+  const sendMessage = () => {
     if (outbound !== ``) {
       setChat((msgs) => [...msgs, outbound]);
       const payload = { room: room, user: user, id: id, ready: ready, msg: outbound };
-      await socket.emit("signal_lobby", payload);
+      socket.emit("signal_lobby", payload, (res: LobbyResponse) => {
+        switch (res.status) {
+          case `err`: setErr(res.msg); break;
+          case `ok`: break;
+          default: break;
+        }
+      });
       setOutbound('');
       btmTxt?.scrollIntoView({ behavior: "smooth" });
     }
@@ -158,26 +179,20 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   useEffect(() => {
 
     socket.on("lobby_poll", (inbound: any) => {
-      if (inbound.players !== undefined) setPlayers(inbound.players);
-      if (inbound.msg !== ``) {
-        setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
-        btmTxt?.scrollIntoView({ behavior: "smooth" });
+      /* polls for player list, messages, and game start */
+      switch (inbound.status) {
+        case `err`: setErr(inbound.msg); break;
+        case `ok`:
+          setActors(inbound.actors);
+          if (inbound.msg !== ``) {
+            setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
+            btmTxt?.scrollIntoView({ behavior: "smooth" }); 
+          } break;
+        case `start`: setPhase(1); setReady(false); break;
+        default: break;
       }
-      if (inbound.code === `start`) { setPhase(1); setReady(false); }
-    });
-    
-    socket.on("lobby_err", (inbound: any) => {
-      if (inbound.err === false) {
-        switch (inbound.code) {
-          case 'exit': def(); break;
-          case 'ready': setReady(inbound.ready); break;
-          default: break;
-        }
-      }
-      else setErr(inbound.msg);
-    });
-
-  }, [socket, id]);
+    })
+  }, [socket]);
 
   const regCol = {background: `#545652`};
   const altCol = {background: `#445652`};
@@ -189,12 +204,12 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
         <button onClick={disconnect}>Exit Room</button>
         <h3>Players</h3>
         <ul id='playerList'>
-          { players.map((v, i) => { 
+          { actors?.map((v, i) => { 
             return  <li key={i}> { v.user } 
                       { v.id === id && (gamePhase <= 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
                       { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
 
-                      { gamePhase > 0 && <label>{ v.wait === false ? '✓' : '✗' }</label> }
+                      { gamePhase > 0 && <label>{ v.ready !== false ? '✓' : '✗' }</label> }
                     </li> })
           }
         </ul>
@@ -207,7 +222,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       </div>
 
       <div id='field'>
-        { (gamePhase > 0 || gamePhase === -1) && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setPlayers={setPlayers} /> }
+        { (gamePhase > 0 || gamePhase === -1) && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setActors={setActors} /> }
       </div>
     </>
   );

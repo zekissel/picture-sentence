@@ -1,9 +1,11 @@
 import "./App.css";
 import io from "socket.io-client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Game from "./Game";
 
 const socket = io("http://localhost:5174");
+
+interface Response { status: string; msg: string; code: number; }
 
 interface ClientProps {
   setID: React.Dispatch<React.SetStateAction<number>>;
@@ -18,17 +20,17 @@ interface ClientProps {
 function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
   const [err, setErr] = useState("");
-  useEffect(() => {
-    socket.on("receive_err", (inbound: any) => {
-      if (inbound.err) setErr(inbound.msg);
-      else if (inbound.code === `join`) { setID(inbound.id); game(); }
-    });
-  }, [socket]);
-
+  
   const joinGame = () => {
     if (user !== "" && room !== "") {
       const payload = { room: room, user: user };
-      socket.emit("join_room", payload);
+      socket.emit("join_room", payload, (res: Response) => {
+        switch (res.status) {
+          case `err`: setErr(res.msg); break;
+          case `ok`: setID(res.code); game(); break;
+          default: break;
+        }
+      });
     }
   };
 
@@ -43,22 +45,23 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   )
 }
 
-function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
+function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
+  
   const [err, setErr] = useState("");
-  useEffect(() => {
-    socket.on("receive_err", (inbound: any) => {
-      if (inbound.err) setErr(inbound.msg);
-      else { setID(inbound.id); game(); }
-    });
-  }, [socket]);
 
   const hostGame = () => {
     if (user !== "" && room !== "") {
       const payload = { room: room, user: user };
-      socket.emit("host_room", payload);
+      socket.emit("host_room", payload, (res: Response) => {
+        switch (res.status) {
+          case `err`: setErr(res.msg); break;
+          case `ok`: setID(res.code); game(); break;
+          default: break;
+        }
+      });
     }
-  }
+  };
 
   return (
     <menu>

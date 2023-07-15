@@ -1,3 +1,5 @@
+import { Socket } from "socket.io";
+
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -14,148 +16,181 @@ const io = new Server(server, {
   },
 });
 
-const LOBBY = new Map<Key, Player[]>();
-const GAME = new Map<Key, Paper[]>();
-const active = new Map<Key, boolean>();
-const waiting = new Map<Key, number>();
-
 type Key = string;
-interface Player {
+interface Actor {
+  socket: string;
   id: number;
   user: string;
   ready: boolean;
-  wait: boolean;
-  socket: string;
 }
 interface Paper {
   id: number;
   answers: string[];
 }
 
+interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
+interface LobbyResponse { status: string; msg: string; author: string; actors: Actor[], code: number }
+interface Response { status: string; msg: string; code: number; }
+type Callback = (r: Response | LobbyResponse | GameResponse) => void;
 
-io.on('connection', (socket: any) => {
+interface InboundMenu { room: string; user: string; }
+interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
+interface InboundGame { room: string; id: number; msg: string; round: number; }
+
+const MAX_ROUND = 7;
+
+const LOBBY = new Map<Key, Actor[]>();
+const GAME = new Map<Key, Paper[]>();
+
+
+const isActive = (room: string) => {
+  const active = GAME.get(room);
+  return active !== undefined;
+}
+
+const playerJoin = (socket: Socket, room: string, user: string, serverReply: Callback) => {
+
+  const actors = LOBBY.get(room);
+  /* host game */
+  if (!actors) {
+    const a = { socket: socket.id, id: 0, user: user, ready: false };
+    LOBBY.set(room, [a]);
+  /* join game */
+  } else {
+    const a = { socket: socket.id, id: actors.length, user: user, ready: false }
+    actors.push(a); LOBBY.set(room, actors);
+  }
+
+  socket.join(room);
+
+  const ID = (actors ? actors.length - 1 : 0);
+  console.log(`User with ID: ${socket.id} has joined room ${room}`);
+  
+  const payload = { status: `ok`, msg: `Joining room ${room}`, code: ID };
+  serverReply(payload);
+
+  /* refresh entire lobby after player joins */
+  const lobbyLoad = { status: `ok`, msg: `${user} has joined the room`, author: `server`, actors: actors };
+  socket.to(room).emit('lobby_poll', lobbyLoad);
+  socket.emit('lobby_poll', lobbyLoad);
+
+}
+
+const playerExit = (socket: Socket) => {
+
+  const lobbies = LOBBY.entries();
+  let found = false;
+  let key: string = ``;
+
+  for (let room of lobbies) {
+    if (found) break;
+
+    room[1] = room[1].filter((actor) => {
+      if (actor.socket === socket.id) {
+        found = true;
+        key = room[0];
+        
+        let papers = GAME.get(room[0]);
+        papers = papers?.filter((p) => { return p.id !== actor.id; });
+        GAME.set(room[0], papers ?? []);
+      }
+      return actor.socket !== socket.id;
+    });
+    LOBBY.set(room[0], room[1]);
+  }
+  if (found && LOBBY.get(key)!.length == 0) {
+    GAME.delete(key);
+    LOBBY.delete(key);
+    console.log(`Room ${key} returned to available keys.`);
+  }
+}
+
+
+
+io.on('connection', (socket: Socket) => {
   console.log(`User Connected: ${socket.id}`);
 
   /* CREATE ROOM */
-  socket.on('host_room', (client: any) => {
-    /* return err: already in use */
+  socket.on('host_room', (client: InboundMenu, serverReply: Callback) => {
+
     if (LOBBY.has(client.room)) {
-      const payload = { err: true, msg: 'Game key is already in use!', code: `inuse`};
-      socket.emit('receive_err', payload);
+      const payload = { status: `err`, msg: `Game key is already in use!`, code: -1  }
+      serverReply(payload);
+      return;
     }
-    else {
-      /* servers keeps track of players in room */
-      const p = { id: 0, user: client.user, ready: false, wait: true, socket: socket.id }
-      LOBBY.set(client.room, [p])
-      active.set(client.room, false);
+    
+    playerJoin(socket, client.room, client.user, serverReply);
 
-      socket.join(client.room);
-      console.log(`User with ID: ${socket.id} is now hosting room: ${client.room}`);
-
-      const payload = { err: false, msg: 'Hosting game...', code: `join`, id: 0 };
-      socket.emit('receive_err', payload);
-    }
   });
 
   /* JOIN PRE-EXISTING ROOM */
-  socket.on('join_room', (client: any) => {
-    const players = LOBBY.get(client.room);
-    if (players !== undefined && !active.get(client.room)) {
-      /* room exists, add user to list */
-      const p = { id: players.length, user: client.user, ready: false, wait:true, socket: socket.id }
-      players.push(p); LOBBY.set(client.room, players);
+  socket.on('join_room', (client: InboundMenu, serverReply: Callback) => {
 
-      socket.join(client.room);
-      console.log(`User with ID: ${socket.id} joined room: ${client.room}`);
-
-      const payload = { err: false, msg: 'Joining game...', code: `join`, id: players.length - 1 };
-      socket.emit('receive_err', payload);
-
-      /* refresh entire lobby after player joins */
-      const lobbyLoad = { err: false, msg: `${client.user} has joined the room`, author: `server`, code: `lobby`, players: players };
-      socket.to(client.room).emit('lobby_poll', lobbyLoad);
-      socket.emit('lobby_poll', lobbyLoad);
-    } else {
-      /* return error payload */
-      const payload = { err: true, msg: 'Invalid game key!', code: `notfound` };
-      if (active.get(client.room)) payload.msg = `Game has already started!`;
-      socket.emit('receive_err', payload);
+    const active = isActive(client.room);
+    if (active) {
+      const payload = { status: `err`, msg: `Game has already started!`, code: -1  }
+      serverReply(payload); return;
     }
+    if (!LOBBY.has(client.room)) {
+      const payload = { status: `err`, msg: `Invalid game key!`, code: -1  }
+      serverReply(payload); return;
+    }
+
+    playerJoin(socket, client.room, client.user, serverReply);
+
   });
 
   /* EXIT ROOM */
-  socket.on('leave_room', (client: any) => {
-    /* remove user from player list, delete room if empty */
-    let players = LOBBY.get(client.room);
-    if (players !== undefined) {
+  socket.on('exit_room', (client: InboundMenu) => {
+    
+    playerExit(socket);
 
-      players = players.filter((p) => {
-        return p.id !== client.id;
-      });
-      
-      if (players.length > 0) {
-        LOBBY.set(client.room, players);
-        if (active.get(client.room)) {
-          waiting.set(client.room, waiting.get(client.room)! - 1);
-          /* resolve mistmatch of Paper[] with Player[] */
-          let papers = GAME.get(client.room);
-          papers = papers?.filter((p) => { return p.id !== client.id; });
-          if (papers) GAME.set(client.room, papers);
-        }
-        /* remove room, no active players */
-      } else {
-        LOBBY.delete(client.room);
-        GAME.delete(client.room);
-        active.delete(client.room);
-        waiting.delete(client.room);
-        console.log(`Room ${client.room} returned to available keys.`);
-      }
-    }
-    /* return payload for frontend */
-    const payload = { err: false, msg: 'Exiting game', code: `exit` };
-    socket.emit('lobby_err', payload);
   });
 
-  /* PLAYER READY FOR GAME */
-  socket.on('signal_lobby', (client: any) => {
-    let players = LOBBY.get(client.room);
-    if (players !== undefined) {
-      players.map((v) => { 
-        if (v.id === client.id) v.ready = client.ready;
-        return v;
-      });
-      LOBBY.set(client.room, players);
-
-      /* return payload for frontend */
-      const payload = { err: false, msg: 'Ready\'d Up', code: `ready`, ready: client.ready };
-      socket.emit('lobby_err', payload);
-
-      const lobbyLoad = { err: false, msg: client.msg, author: client.user, code: `lobby`, players: players };
-      socket.to(client.room).emit('lobby_poll', lobbyLoad);
-      
-      let ready = active.get(client.room);
-      if (!ready) { 
-        ready = true; 
-        players.forEach((p) => { if (!p.ready) ready = false; }); 
-        /* start game if everyone is ready */
-        if (ready) {
-          active.set(client.room, true);
-          waiting.set(client.room, players.length)
-          const lobbyLoad = { err: false, msg: ``, author: `server`, code: `start`, players: players };
-          socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
-          socket.emit(`lobby_poll`, lobbyLoad);
-        }
-      }
-    } else {
-      /* return payload for frontend: error */
-      const payload = { err: true, msg: `Room not found!`, code: `notfound` };
-      socket.emit('lobby_err', payload);
+  /* ready up players and send messages */
+  socket.on('signal_lobby', (client: InboundLobby, serverReply: Callback) => {
+    
+    const actors = LOBBY.get(client.room);
+    if (!actors) {
+      const payload = { status: `err`, msg: `Room not found!`, author: `server`, actors: [], code: -1 }
+      serverReply(payload); return;
     }
+
+    actors.map((v, _i) => {
+      if (v.socket === socket.id) v.ready = client.ready;
+      return v;
+    });
+    LOBBY.set(client.room, actors);
+
+    /* transmit to lobby for messages and ready-up */
+    const lobbyLoad = { status: `ok`, msg: client.msg, author: client.user, actors: actors, code: 0 };
+    socket.to(client.room).emit('lobby_poll', lobbyLoad);
+
+    const payload = { status: `ok`, msg: ``, author: `server`, actors: actors, code: client.ready ? 1 : -1 };
+    serverReply(payload);
+
+    /* determine when to start game */
+    let ready = isActive(client.room);
+    if (!ready) {
+      ready = true;
+      actors.forEach((a) => { if (!a.ready) ready = false; });
+      if (ready) {
+        actors.map((v) => { v.ready = false; return v; });
+        LOBBY.set(client.room, actors);
+        GAME.set(client.room, []);
+
+        const lobbyLoad = { status: `start`, msg: ``, author: `server`, actors: actors, code: 0 };
+        socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
+        socket.emit(`lobby_poll`, lobbyLoad);
+      }
+    }
+
   });
 
-  socket.on('signal_game', (client: any) => {
+
+  socket.on('signal_game', (client: InboundGame, serverReply: Callback) => {
+
     const papers: Paper[] = GAME.get(client.room) ?? [];
-
     if (client.round === 1) {
 
       papers[client.id] = { id: client.id, answers: [client.msg] };
@@ -167,72 +202,55 @@ io.on('connection', (socket: any) => {
       papers[client.id] = { id: client.id, answers: append_ans };
       
     }
-    /* save edit to paper */
     GAME.set(client.room, papers);
 
-    /* waiting for one less player to answer */
-    let waitnum: number = waiting.get(client.room)! - 1;
-    waiting.set(client.room, waitnum);
-    const players = LOBBY.get(client.room)!;
-    players.map((p) => { if (p.id === client.id) p.wait = false; return p; });
-    LOBBY.set(client.room, players);
+    let done = true;
+    const actors = LOBBY.get(client.room)!;
+    actors.map((a) => { 
+      if (a.socket === socket.id) a.ready = true; 
+      if (!a.ready) done = false;
+      return a; 
+    });
+    LOBBY.set(client.room, actors);
 
+    const payload = { ready: true, msg: [], code: client.round, actors: actors }
+    serverReply(payload);
+    const gameLoad = { ready: undefined, msg: [], code: client.round, actors: actors }
+    socket.to(client.room).emit(`game_poll`, gameLoad);
 
-    let singleLoad = { round: client.round, prevAns: ``, idle: true, players: players };
-    socket.emit('game_poll', singleLoad);
-    let gameLoad = { round: client.round, prevAns: ``, players: players };
-    socket.to(client.room).emit('game_poll', gameLoad);
+    if (done && client.round < MAX_ROUND) {
 
-    if (waitnum === 0 && client.round < 7) {
-      /* reset waiting number */
-      const numP = LOBBY.get(client.room)!.length;
-      waiting.set(client.room, numP)
-      players.map((p) => { p.wait = true; return p; });
-      LOBBY.set(client.room, players);
+      actors.map((a) => { a.ready = false; return a; });
+      LOBBY.set(client.room, actors);
 
       papers.unshift(papers.pop()!);
-      
-      /* distribute previous answers and progress rounds */
-      let gameLoad = { round: client.round + 1, prevAns: papers, idle: false, players: players };
-      socket.to(client.room).emit('game_poll', gameLoad);
-      socket.emit('game_poll', gameLoad);
-      
-    } else if (waitnum === 0) {
-      /* last round end */
-      const gameLoad = { round: -1, prevAns: papers, idle: false, code: `end`};
+
+      const gameLoad = { ready: false, msg: papers, code: client.round + 1, actors: actors };
       socket.to(client.room).emit('game_poll', gameLoad);
       socket.emit('game_poll', gameLoad);
 
-      const players = LOBBY.get(client.room)!;
-      players.map((p) => { p.ready = false; return p; });
-      players.map((p) => { p.wait = true; return p; });
-      LOBBY.set(client.room, players);
+    } else if (done) {
 
-      active.set(client.room, false);
+      actors.map((a) => { a.ready = false; return a; });
+      LOBBY.set(client.room, actors);
+
+      const gameLoad = { ready: false, msg: papers, code: -1, actors: actors};
+      socket.to(client.room).emit('game_poll', gameLoad);
+      socket.emit('game_poll', gameLoad);
+
       GAME.delete(client.room);
-      waiting.set(client.room, players.length);
     }
+
   });
 
 
-  /* CLOSE CONNECTION FROM CLIENT TO SERVER */
+  // CLOSE CONNECTION FROM CLIENT TO SERVER */
   socket.on('disconnect', () => {
+
+    playerExit(socket);
     console.log(`User Disconnected`, socket.id);
-    const lobbies = LOBBY.entries();
-    for (let room of lobbies) {
-      room[1] = room[1].filter((player) => {
-        if (player.socket === socket.id) {
-          /* remove players paper, lower wait count, remove player */
-          let papers = GAME.get(room[0]);
-          papers = papers?.filter((p) => { return p.id !== player.id; });
-          if (papers) GAME.set(room[0], papers);
-          waiting.set(room[0], (waiting.get(room[0])! - 1 >= 0) ? waiting.get(room[0])! - 1 : 0);
-        }
-        return player.socket !== socket.id;
-      });
-      LOBBY.set(room[0], room[1]);
-    }
   });
+
 });
 
 server.listen(SOCKET_PORT, () => {
