@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import Canvas from './Canvas';
 
@@ -137,7 +137,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
   const [outbound, setOutbound] = useState(``);
   const updateOut = (e: any) => { setOutbound(e.target.value); }
   const [chat, setChat] = useState<string[]>([]);
-  const [btmTxt, setBtm] = useState<HTMLDivElement | null>(null);
+  const btmTxt = useRef<HTMLLIElement>(null);
 
   const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false }]);
   const [gamePhase, setPhase] = useState(0);
@@ -173,7 +173,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
         }
       });
       setOutbound('');
-      btmTxt?.scrollIntoView({ behavior: "smooth" });
+      btmTxt.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
   
@@ -188,7 +188,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
           setActors(inbound.actors);
           if (inbound.msg !== ``) {
             setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
-            btmTxt?.scrollIntoView({ behavior: "smooth" }); 
+            btmTxt.current?.scrollIntoView({ behavior: "smooth" }); 
           } break;
         case `start`: setPhase(1); setReady(false); break;
         default: break;
@@ -218,7 +218,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
         <h3>Chat</h3>
         <ul id='chat'>
           { chat.map((v, i) => { return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { ` ${v}` }</li> }) }
-          <div ref={(e) => (setBtm(e))}></div>
+          <li ref={btmTxt}></li>
         </ul>
         <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend}/><button onClick={sendMessage}>Send Message</button>
       </div>

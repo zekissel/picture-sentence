@@ -21,6 +21,8 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
     const [color, setColor] = useState<Color>('#000000');
     const updateColor = (e: any) => { setColor(e.hex); }
 
+    const undoLine = () => {  }
+
 
     function onDraw(ctx: CanvasRenderingContext2D | null, point: Point | null, prevPoint: Point | null) {
         drawLine(prevPoint, point, ctx, color, 4);
@@ -49,7 +51,7 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     return(
         <div>
-            <button>Undo</button>
+            <button onClick={undoLine}>Undo</button>
             <canvas id='image'
                 width={width}
                 height={height}
