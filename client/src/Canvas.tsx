@@ -1,5 +1,7 @@
 'use client'
+import { useState } from 'react';
 import { useOnDraw } from './_drawUtils';
+import { SketchPicker } from 'react-color';
 
 interface Point { x: number; y: number; }
 type Color = `#${string}`;
@@ -13,8 +15,15 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     const { setCanvasRef, onCanvasMouseDown, getImage } = useOnDraw(onDraw);
 
+    const [visible, setVisible] = useState(false);
+    const updateVisible = () => { setVisible(!visible); }
+
+    const [color, setColor] = useState<Color>('#000000');
+    const updateColor = (e: any) => { setColor(e.hex); }
+
+
     function onDraw(ctx: CanvasRenderingContext2D | null, point: Point | null, prevPoint: Point | null) {
-        drawLine(prevPoint, point, ctx, '#000000', 4);
+        drawLine(prevPoint, point, ctx, color, 4);
     }
 
     function exportImage () {
@@ -40,6 +49,7 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     return(
         <div>
+            <button>Undo</button>
             <canvas id='image'
                 width={width}
                 height={height}
@@ -48,6 +58,11 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
                 style={canvasStyle}
                 ref={setCanvasRef}
             />
+            <button onClick={updateVisible}>{ visible ? `Hide` : `Show` } Colors</button>
+            
+            { visible && <SketchPicker color={color} onChangeComplete={updateColor} /> }
+            
+
         </div>
     );
 }

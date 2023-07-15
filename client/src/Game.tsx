@@ -76,8 +76,8 @@ function GameField ({ socket, room, id, round, setRound, setActors }: FieldProps
       const payload = { room: room, id: id, msg: curAnswer, round: round };
       socket.emit("signal_game", payload, (res: GameResponse) => {
         if (res.msg?.length > 0) setPrevious(res.msg[id].answers[round - 1]);
-        if (res.actors) setActors(res.actors);
-        if (res.ready) setIdle(res.ready);
+        if (res.actors !== undefined) setActors(res.actors);
+        if (res.ready !== undefined) setIdle(res.ready);
         setRound(res.code);
       });
       setCurrent(``);
@@ -152,7 +152,9 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
     socket.emit(`signal_lobby`, payload, (res: LobbyResponse) => {
       switch (res.status) {
         case `err`: setErr(res.msg); break;
-        case `ok`: setReady(res.code > 0 ? true : false); break;
+        case `ok`: 
+          setReady(res.code > 0 ? true : false); 
+          setActors(res.actors); break;
         default: break;
       }
     });
@@ -166,7 +168,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       socket.emit("signal_lobby", payload, (res: LobbyResponse) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
-          case `ok`: break;
+          case `ok`: setActors(res.actors); break;
           default: break;
         }
       });

@@ -70,7 +70,12 @@ const playerJoin = (socket: Socket, room: string, user: string, serverReply: Cal
   serverReply(payload);
 
   /* refresh entire lobby after player joins */
-  const lobbyLoad = { status: `ok`, msg: `${user} has joined the room`, author: `server`, actors: actors };
+  const lobbyLoad = { 
+    status: `ok`, 
+    msg: `${user} has joined the room`, 
+    author: `server`, 
+    actors: actors ?? [{ socket: socket.id, id: 0, user: user, ready: false }] 
+  };
   socket.to(room).emit('lobby_poll', lobbyLoad);
   socket.emit('lobby_poll', lobbyLoad);
 
@@ -81,6 +86,7 @@ const playerExit = (socket: Socket) => {
   const lobbies = LOBBY.entries();
   let found = false;
   let key: string = ``;
+  let actors: Actor[] = [];
 
   for (let room of lobbies) {
     if (found) break;
@@ -89,10 +95,11 @@ const playerExit = (socket: Socket) => {
       if (actor.socket === socket.id) {
         found = true;
         key = room[0];
+        actors = room[1];
         
         let papers = GAME.get(room[0]);
         papers = papers?.filter((p) => { return p.id !== actor.id; });
-        GAME.set(room[0], papers ?? []);
+        if (papers) GAME.set(room[0], papers);
       }
       return actor.socket !== socket.id;
     });
@@ -102,6 +109,10 @@ const playerExit = (socket: Socket) => {
     GAME.delete(key);
     LOBBY.delete(key);
     console.log(`Room ${key} returned to available keys.`);
+
+  } else if (found) {
+    const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors };
+    socket.to(key).emit('lobby_poll', lobbyLoad);
   }
 }
 
