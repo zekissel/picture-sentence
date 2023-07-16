@@ -11,7 +11,7 @@ A classic word and image game, guaranteed to catalyze family fun. Developed usin
 ## To Play:
 *Best suitaible for 4+ players*
 
-*These instructions describe in person play*
+*These instructions describe in-person play*
 1. Everybody writes one sentence at the top of their own paper.
 2. Everybody passes their paper in the same direction (clockwise or counter).
 3. Read the sentence at the top of the paper and draw a picture of it below.
