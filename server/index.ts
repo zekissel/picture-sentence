@@ -155,8 +155,7 @@ io.on('connection', (socket: Socket) => {
   /* JOIN PRE-EXISTING ROOM */
   socket.on('join_room', (client: InboundMenu, serverReply: Callback) => {
 
-    const active = isActive(client.room);
-    if (active) {
+    if (isActive(client.room)) {
       const payload = { status: `err`, msg: `Game has already started!`, code: -1  }
       serverReply(payload); return;
     }
@@ -185,7 +184,7 @@ io.on('connection', (socket: Socket) => {
       serverReply(payload); return;
     }
 
-    actors.map((v, _i) => {
+    actors.map((v) => {
       if (v.socket === socket.id) v.ready = client.ready;
       return v;
     });
