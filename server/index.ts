@@ -35,13 +35,15 @@ interface LobbyResponse { status: string; msg: string; author: string; actors: A
 interface Response { status: string; msg: string; code: number; }
 type Callback = (r: Response | LobbyResponse | GameResponse) => void;
 
-interface InboundMenu { room: string; user: string; }
+interface RoomSettings { max: number, pass: string, ready: boolean }
+interface InboundMenu { room: string; user: string; opt: RoomSettings | undefined; pass: string | undefined }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
 
 /* --------------- GAME VARIABLES */
 const MAX_ROUND = 7;
 
+const SETTINGS = new Map<Key, RoomSettings>();
 const LOBBY = new Map<Key, Actor[]>();
 const GAME = new Map<Key, Paper[]>();
 
@@ -51,19 +53,20 @@ const isActive = (room: string) => {
   return active !== undefined;
 }
 
+const createRoom = (room: string, settings: RoomSettings | undefined) => {
+  if (!settings) settings = { max: 0, pass: ``, ready: true }
+  SETTINGS.set(room, settings);
+  LOBBY.set(room, []);
+  GAME.delete(room);
+}
+
 /* --------------- HELPER FUNCTIONS */
 const playerJoin = (socket: Socket, room: string, user: string, serverReply: Callback) => {
 
-  const actors = LOBBY.get(room);
-  /* host game */
-  if (!actors) {
-    const a = { socket: socket.id, id: 0, user: user, ready: false };
-    LOBBY.set(room, [a]);
-  /* join game */
-  } else {
-    const a = { socket: socket.id, id: actors.length, user: user, ready: false }
-    actors.push(a); LOBBY.set(room, actors);
-  }
+  const actors = LOBBY.get(room)!;
+  const a = { socket: socket.id, id: actors.length, user: user, ready: false }
+  actors.push(a); LOBBY.set(room, actors);
+  
 
   socket.join(room);
 
@@ -110,7 +113,7 @@ const playerExit = (socket: Socket) => {
     LOBBY.set(room[0], room[1]);
   }
   if (found && LOBBY.get(key)!.length > 0) {
-    
+
     const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors };
     socket.to(key).emit('lobby_poll', lobbyLoad);
 
@@ -149,6 +152,8 @@ io.on('connection', (socket: Socket) => {
       serverReply(payload);
       return;
     }
+
+    createRoom(client.room, client.opt);
     
     playerJoin(socket, client.room, client.user, serverReply);
 
@@ -157,12 +162,36 @@ io.on('connection', (socket: Socket) => {
   /* JOIN PRE-EXISTING ROOM */
   socket.on('join_room', (client: InboundMenu, serverReply: Callback) => {
 
+    if (!LOBBY.has(client.room)) {
+      const payload = { status: `err`, msg: `Invalid game key!`, code: -1  }
+      serverReply(payload); return;
+    }
     if (isActive(client.room)) {
       const payload = { status: `err`, msg: `Game has already started!`, code: -1  }
       serverReply(payload); return;
     }
+    const max = SETTINGS.get(client.room)!.max;
+    if (max > 0 && max <= LOBBY.get(client.room)!.length) {
+      const payload = { status: `err`, msg: `This lobby has reached full capacity!`, code: -1  }
+      serverReply(payload); return;
+    }
+    if (SETTINGS.get(client.room)!.pass !== ``) {
+      const payload = { status: `auth`, msg: `Enter room passkey`, code: -1  }
+      serverReply(payload); return;
+    }
+
+    playerJoin(socket, client.room, client.user, serverReply);
+
+  });
+
+  socket.on(`room_auth`, (client: InboundMenu, serverReply: Callback) => {
+
     if (!LOBBY.has(client.room)) {
       const payload = { status: `err`, msg: `Invalid game key!`, code: -1  }
+      serverReply(payload); return;
+    }
+    if (SETTINGS.get(client.room)?.pass !== client.pass) {
+      const payload = { status: `err`, msg: `Wrong password!`, code: -1  }
       serverReply(payload); return;
     }
 

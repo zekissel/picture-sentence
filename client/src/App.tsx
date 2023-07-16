@@ -20,6 +20,8 @@ interface ClientProps {
 function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
   const [err, setErr] = useState("");
+  const [auth, setAuth] = useState(false);
+  const [pass, setPass] = useState(``);
   
   const joinGame = () => {
     if (user !== "" && room !== "") {
@@ -27,6 +29,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       socket.emit("join_room", payload, (res: Response) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
+          case `auth`: setAuth(true); break;
           case `ok`: setID(res.code); game(); break;
           default: break;
         }
@@ -34,12 +37,27 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
     }
   };
 
+  const enterPass = () => {
+    if (pass !== ``) {
+      const payload = { room: room, user: user, pass: pass };
+      socket.emit("room_auth", payload, (res: Response) => {
+        switch (res.status) {
+          case `err`: setErr(res.msg); setAuth(false); break;
+          case `ok`: setID(res.code); game(); break;
+          default: break;
+        }
+      });
+    }
+  }
+
   return (
     <menu>
       <li><button onClick={def}>Go back</button></li>
       <li><input type="text" placeholder="Nickname" onChange={(e) => { setUser(e.target.value); }} /></li>
       <li><input type="text" placeholder="Room Key" onChange={(e) => { setRoom(e.target.value); }} /></li>
-      <li><button onClick={joinGame}>Join</button></li>
+      { auth && <li><input type="text" placeholder="Enter room password" onChange={(e) => { setPass(e.target.value); }} /></li> }
+      { !auth && <li><button onClick={joinGame}>Join</button></li> }
+      { auth && <li><button onClick={enterPass}>Enter</button></li> }
       <p>{ err }</p>
     </menu>
   )
@@ -50,9 +68,14 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   
   const [err, setErr] = useState("");
 
+  const [playerMax, setPlayerMax] = useState(0);
+  const [passKey, setPassKey] = useState(``);
+  const [useReady, setUseReady] = useState(true);
+
   const hostGame = () => {
     if (user !== "" && room !== "") {
-      const payload = { room: room, user: user };
+      const roomOpt = { max: playerMax, pass: passKey, ready: useReady }
+      const payload = { room: room, user: user, opt: roomOpt };
       socket.emit("host_room", payload, (res: Response) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
@@ -68,6 +91,8 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       <li><button onClick={def}>Go back</button></li>
       <li><input type="text" placeholder="Nickname" onChange={(e) => { setUser(e.target.value); }} /></li>
       <li><input type="text" placeholder="Create key" onChange={(e) => { setRoom(e.target.value); }} /></li>
+      <li><input type="number" placeholder="Limit # players (Optional)" onChange={(e) => { setPlayerMax(Math.abs(Math.round(Number(e.target.value)))); }} /></li>
+      <li><input type="text" placeholder="Create password (Optional)" onChange={(e) => { setPassKey(e.target.value); }} /></li>
       <li><button onClick={hostGame}>Host</button></li>
       <p>{ err }</p>
     </menu>
