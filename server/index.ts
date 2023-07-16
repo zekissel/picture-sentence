@@ -109,14 +109,16 @@ const playerExit = (socket: Socket) => {
     });
     LOBBY.set(room[0], room[1]);
   }
-  if (found && LOBBY.get(key)!.length == 0) {
+  if (found && LOBBY.get(key)!.length > 0) {
+    
+    const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors };
+    socket.to(key).emit('lobby_poll', lobbyLoad);
+
+  } else if (found) {
+    
     GAME.delete(key);
     LOBBY.delete(key);
     console.log(`Room ${key} returned to available keys.`);
-
-  } else if (found) {
-    const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors };
-    socket.to(key).emit('lobby_poll', lobbyLoad);
   }
 }
 
