@@ -71,10 +71,12 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   const [playerMax, setPlayerMax] = useState(0);
   const [passKey, setPassKey] = useState(``);
   const [useReady, setUseReady] = useState(true);
+  const [censor, setCensor] = useState(false);
+  const [rounds, setRounds] = useState(7);
 
   const hostGame = () => {
     if (user !== "" && room !== "") {
-      const roomOpt = { max: playerMax, pass: passKey, ready: useReady }
+      const roomOpt = { max: playerMax, pass: passKey, ready: useReady, censor: censor, rounds: rounds }
       const payload = { room: room, user: user, opt: roomOpt };
       socket.emit("host_room", payload, (res: Response) => {
         switch (res.status) {
@@ -91,8 +93,26 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       <li><button onClick={def}>Go back</button></li>
       <li><input type="text" placeholder="Nickname" onChange={(e) => { setUser(e.target.value); }} /></li>
       <li><input type="text" placeholder="Create key" onChange={(e) => { setRoom(e.target.value); }} /></li>
-      <li><input type="number" placeholder="Limit # players (Optional)" onChange={(e) => { setPlayerMax(Math.abs(Math.round(Number(e.target.value)))); }} /></li>
       <li><input type="text" placeholder="Create password (Optional)" onChange={(e) => { setPassKey(e.target.value); }} /></li>
+      <li><input type="number" placeholder="Limit # players (Optional)" onChange={(e) => { setPlayerMax(Math.abs(Math.round(Number(e.target.value)))); }} /></li>
+      <li><input type="number" placeholder="# rounds (Optional - default 7)" onChange={(e) => { setRounds(Math.abs(Math.round(Number(e.target.value)))); }} /></li>
+      <li></li>
+      <fieldset onChange={(e: any) => setUseReady( e.target.value === `player` )}>
+        <li><input type="radio" name="start" id='p' value='player' defaultChecked/><label htmlFor="p">Players ready up to start</label></li>
+        <li><input type="radio" name="start" id='h' value='host' /><label htmlFor="h">Host starts game</label></li>
+      </fieldset>
+      <fieldset>
+        <li>
+          <select name="censor" onChange={(e: any) => { setCensor(e.target.value === 1) }}>
+            <option value={0} >
+              No language censorship
+            </option>
+            <option value={1}>
+              Use offensive language filter
+            </option>
+          </select>
+        </li>
+      </fieldset>
       <li><button onClick={hostGame}>Host</button></li>
       <p>{ err }</p>
     </menu>

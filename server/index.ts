@@ -35,13 +35,12 @@ interface LobbyResponse { status: string; msg: string; author: string; actors: A
 interface Response { status: string; msg: string; code: number; }
 type Callback = (r: Response | LobbyResponse | GameResponse) => void;
 
-interface RoomSettings { max: number, pass: string, ready: boolean }
+interface RoomSettings { max: number, pass: string, ready: boolean, censor: boolean, rounds: number }
 interface InboundMenu { room: string; user: string; opt: RoomSettings | undefined; pass: string | undefined }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
 
 /* --------------- GAME VARIABLES */
-const MAX_ROUND = 7;
 
 const SETTINGS = new Map<Key, RoomSettings>();
 const LOBBY = new Map<Key, Actor[]>();
@@ -54,7 +53,7 @@ const isActive = (room: string) => {
 }
 
 const createRoom = (room: string, settings: RoomSettings | undefined) => {
-  if (!settings) settings = { max: 0, pass: ``, ready: true }
+  if (!settings) settings = { max: 0, pass: ``, ready: true, censor: false, rounds: 7 }
   SETTINGS.set(room, settings);
   LOBBY.set(room, []);
   GAME.delete(room);
@@ -149,9 +148,13 @@ io.on('connection', (socket: Socket) => {
 
     if (LOBBY.has(client.room)) {
       const payload = { status: `err`, msg: `Game key is already in use!`, code: -1  }
-      serverReply(payload);
-      return;
+      serverReply(payload); return;
     }
+    /*
+    if (filter.isProfane(client.room)) {
+      const payload = { status: `err`, msg: `You cannot use this as your room key`, code: -1  }
+      serverReply(payload); return;
+    }*/
 
     createRoom(client.room, client.opt);
     
@@ -190,7 +193,7 @@ io.on('connection', (socket: Socket) => {
       const payload = { status: `err`, msg: `Invalid game key!`, code: -1  }
       serverReply(payload); return;
     }
-    if (SETTINGS.get(client.room)?.pass !== client.pass) {
+    if (SETTINGS.get(client.room)!.pass !== client.pass) {
       const payload = { status: `err`, msg: `Wrong password!`, code: -1  }
       serverReply(payload); return;
     }
@@ -221,7 +224,7 @@ io.on('connection', (socket: Socket) => {
     });
     LOBBY.set(client.room, actors);
 
-    /* transmit to lobby for messages and ready-up */
+    /* transmit to lobby for messages and ready-up */ /* add filter to client msg if host opted */
     const lobbyLoad = { status: `ok`, msg: client.msg, author: client.user, actors: actors, code: 0 };
     socket.to(client.room).emit('lobby_poll', lobbyLoad);
 
@@ -265,7 +268,7 @@ io.on('connection', (socket: Socket) => {
     const gameLoad = { ready: undefined, msg: [], code: client.round, actors: actors }
     socket.to(client.room).emit(`game_poll`, gameLoad);
 
-    if (done && client.round < MAX_ROUND) {
+    if (done && client.round < SETTINGS.get(client.room)!.rounds) {
 
       actors.map((a) => { a.ready = false; return a; });
       LOBBY.set(client.room, actors);
