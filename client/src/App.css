@@ -62,14 +62,15 @@ input {
   overflow: scroll;
   overflow-x: hidden;
   padding: 1%;
-  width: 20vw;
+  width: 100%;
+  max-width: 25vw;
 }
 
 #chat, #playerList > li {
   padding: 0 2%;
 }
 
-#ready {
+.ready, .kick {
   width: auto;
   height: 3vh;
 }

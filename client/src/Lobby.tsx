@@ -193,8 +193,9 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
         case `ok`:
           setActors(inbound.actors);
           if (inbound.msg !== ``) {
-            setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
-            btmTxt.current?.scrollIntoView({ behavior: "smooth" }); 
+            const m = `${inbound.msg} ${inbound.author == `` ? `` : `- ${inbound.author}`}`;
+            setChat((msgs) => [...msgs, m]);
+            btmTxt.current?.scrollIntoView({ behavior: "smooth" });
           } 
           if (inbound.disabled) setNoChat(true);
           break;
@@ -220,29 +221,38 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
   return (
     <>
       <div id='lobby'>
-        <p>{ err }</p>
-        <button onClick={disconnect}>Exit Room</button>
-        <h3>Lobby: { room }</h3>
-        <h3>Players</h3>
-        <ul id='playerList'>
-          { actors?.map((v, i) => { 
-            return  <li key={i}> { v.user }
-                      { v.id === id && (gamePhase <= 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
-                      { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
+        <em>{ err }</em>
 
-                      { gamePhase > 0 && <label>{ v.ready !== false ? '✓' : '✗' }</label> }
+        <fieldset>
+          <legend>{ room }</legend>
+          <button onClick={disconnect}>Exit</button>
+        </fieldset>
 
-                      { v.id !== id && (id === 0 && <button id={String(v.id)} onClick={kick}>Kick</button>) }
-                    </li> })
-          }
-        </ul>
-        <h3>Chat</h3>
-        <ul id='chat'>
-          { chat.map((v, i) => { return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { ` ${v}` }</li> }) }
-          <li ref={btmTxt}></li>
-        </ul>
-        <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend} disabled={noChat}/>
-        <button onClick={sendMessage} disabled={noChat}>Send Message</button>
+        <fieldset>
+          <legend>Players</legend>
+          <ul id='playerList'>
+            { actors?.map((v, i) => { 
+              return  <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { v.user }
+                        { v.id === id && (gamePhase <= 0 && <button className='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
+                        { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
+
+                        { gamePhase > 0 && <label>{ v.ready !== false ? '✓' : '✗' }</label> }
+
+                        { v.id !== id && (id === 0 && <button className='kick' id={String(v.id)} onClick={kick}>Kick</button>) }
+                      </li> })
+            }
+          </ul>
+        </fieldset>
+
+        <fieldset>
+          <legend>Chat</legend>
+          <ul id='chat'>
+            { chat.map((v, i) => { return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { ` ${v}` }</li> }) }
+            <li ref={btmTxt}></li>
+          </ul>
+          <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend} disabled={noChat}/>
+          <button onClick={sendMessage} disabled={noChat}>Send Message</button>
+        </fieldset>
       </div>
 
       <div id='field'>

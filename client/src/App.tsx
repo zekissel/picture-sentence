@@ -55,7 +55,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 
   return (
     <menu>
-      <li><button onClick={def}>Go back</button></li>
+      <li><button onClick={def}>Back</button></li>
 
       <fieldset>
         <legend>Connect</legend>

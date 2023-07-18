@@ -62,20 +62,20 @@ const createRoom = (room: string, settings: RoomSettings) => {
 interface msgNode { room: string, author: string, msg: string, code: number }
 const notifyLobby = (socket: Socket, node: msgNode) => {
   const lobbyLoad = {
-    status: node.code === 2 ? `start` : `ok`,
+    status: node.code == 2 ? `start` : `ok`,
     msg: node.msg, 
     author: node.author, 
     actors: LOBBY.get(node.room),
     disabled: SETTINGS.get(node.room)?.chat ? undefined : true,
   };
+
   switch (node.code) {
     case -1:
       socket.to(node.room).emit('adm_poll', lobbyLoad); break;
     case 0:
       socket.to(node.room).emit('lobby_poll', lobbyLoad);
       break;
-    case 1:
-    case 2:
+    default:
       socket.to(node.room).emit('lobby_poll', lobbyLoad);
       socket.emit('lobby_poll', lobbyLoad); break;
   }
@@ -147,6 +147,7 @@ const playerExit = (socket: Socket) => {
 }
 
 const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
+
   let ready = true;
   actors.forEach((a) => { if (!a.ready) ready = false; });
   if (ready) {
@@ -263,11 +264,11 @@ io.on('connection', (socket: Socket) => {
     });
     LOBBY.set(client.room, actors);
 
-    const node = { room: client.room, msg: client.msg, author: client.user, code: 0 };
-    notifyLobby(socket, node);
-
     const payload = { status: `ok`, msg: ``, author: `server`, actors: actors, code: client.ready ? 1 : -1 };
     serverReply(payload);
+
+    const node = { room: client.room, msg: client.msg, author: client.user, code: 0 };
+    notifyLobby(socket, node);
 
     /* determine when to start game */
     if (!isActive(client.room)) determineStart(socket, client.room, actors);
@@ -337,7 +338,7 @@ io.on('connection', (socket: Socket) => {
   socket.on('disconnect', () => {
 
     playerExit(socket);
-    console.log(`User ${socket.id} disconnected`);
+    console.log(`User disconnected: ${socket.id}`);
     
   });
 
