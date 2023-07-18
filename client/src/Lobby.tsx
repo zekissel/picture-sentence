@@ -18,7 +18,7 @@ interface PaperProps {
   index: number;
 }
 
-interface GameProps {
+interface LobbyProps {
   socket: Socket<any, any>;
   room: string;
   user: string;
@@ -26,7 +26,7 @@ interface GameProps {
   def: () => void;
 }
 
-interface FieldProps {
+interface GameProps {
   socket: Socket<any, any>;
   room: string;
   id: number;
@@ -59,7 +59,7 @@ function FoldPaper ({ paper, index }: PaperProps) {
   )
 }
 
-function GameField ({ socket, room, id, round, setRound, setActors }: FieldProps) {
+function Game ({ socket, room, id, round, setRound, setActors }: GameProps) {
 
   const [allPapers, setAll] = useState<Paper[]>([]);
 
@@ -130,7 +130,7 @@ function GameField ({ socket, room, id, round, setRound, setActors }: FieldProps
 
 
 
-export default function Game({ socket, id, user, room, def }: GameProps) {
+export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
   const [err, setErr] = useState(``);
   const [ready, setReady] = useState(false);
   
@@ -153,7 +153,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       switch (res.status) {
         case `err`: setErr(res.msg); break;
         case `ok`: 
-          setReady(res.code > 0 ? true : false); 
+          setReady(res.code > 0 ? true : false);
           setActors(res.actors); break;
         default: break;
       }
@@ -176,6 +176,17 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       btmTxt.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
+
+  const kick = (e: any) => {
+    const payload = { room: room, id: id, kick: e.target.id, code: -1 }
+    socket.emit("host_opt", payload);
+  }
+
+  /*
+  const start = () => {
+    const payload = { room: room, id: id, kick: -1, code: 1 }
+    socket.emit("host_opt", payload);
+  }*/
   
 
   useEffect(() => {
@@ -194,6 +205,13 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
         default: break;
       }
     })
+
+    socket.on(`lobby_adm`, (inbound: any) => {
+      switch (inbound.code) {
+        case -1: def(); console.log(`Kicked from server by host!`); break;
+      }
+    });
+
   }, [socket]);
 
   const regCol = {background: `#545652`};
@@ -212,6 +230,8 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
                       { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
 
                       { gamePhase > 0 && <label>{ v.ready !== false ? '✓' : '✗' }</label> }
+
+                      { v.id !== id && (id === 0 && <button id={String(v.id)} onClick={kick}>Kick</button>) }
                     </li> })
           }
         </ul>
@@ -224,7 +244,7 @@ export default function Game({ socket, id, user, room, def }: GameProps) {
       </div>
 
       <div id='field'>
-        { (gamePhase > 0 || gamePhase === -1) && <GameField socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setActors={setActors} /> }
+        { (gamePhase > 0 || gamePhase === -1) && <Game socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setActors={setActors} /> }
       </div>
     </>
   );

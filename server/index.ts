@@ -38,6 +38,7 @@ type Callback = (r: Response | LobbyResponse | GameResponse) => void;
 interface RoomSettings { max: number, pass: string, ready: boolean, censor: boolean, rounds: number }
 interface InboundMenu { room: string; user: string; opt: RoomSettings | undefined; pass: string | undefined }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
+interface InboundHost { room: string; id: number; kick: number; code: number; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
 
 /* --------------- GAME VARIABLES */
@@ -122,6 +123,7 @@ const playerExit = (socket: Socket) => {
     LOBBY.delete(key);
     console.log(`Room ${key} returned to available keys.`);
   }
+  socket.leave(key);
 }
 
 const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
@@ -202,6 +204,32 @@ io.on('connection', (socket: Socket) => {
 
   });
 
+  socket.on(`host_opt`, (client: InboundHost) => {
+    if (client.code < 0) {
+
+      const payload = { status: `ok`, msg: `Kicked from room by host`, code: -1 };
+
+      const lob = LOBBY.get(client.room);
+      lob?.forEach((a) => {
+        if (a.id == client.kick) {
+          socket.to(a.socket).emit(`lobby_adm`, payload);
+        }
+      });
+
+      let papers = GAME.get(client.room);
+      papers = papers?.filter((p) => { return p.id !== client.kick; });
+      if (papers) GAME.set(client.room, papers);
+
+      let actors = LOBBY.get(client.room);
+      actors = actors!.filter((a) => { return a.id !== client.kick; });
+      LOBBY.set(client.room, actors);
+
+      const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors, code: 0 };
+      socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
+      socket.emit(`lobby_poll`, lobbyLoad);
+    }
+  })
+
   /* EXIT ROOM */
   socket.on('exit_room', (client: InboundMenu) => {
     
@@ -232,7 +260,7 @@ io.on('connection', (socket: Socket) => {
     serverReply(payload);
 
     /* determine when to start game */
-    if (!isActive(client.room)) determineStart(socket, client.room, actors);
+    if (!isActive(client.room) && SETTINGS.get(client.room)?.ready) determineStart(socket, client.room, actors);
 
   });
 

@@ -1,7 +1,7 @@
 import "./App.css";
 import io from "socket.io-client";
 import { useState } from "react";
-import Game from "./Game";
+import Lobby from "./Lobby";
 
 const socket = io("http://localhost:5174");
 
@@ -152,7 +152,7 @@ export default function App() {
         }
         { toggleMenu === MenuMode.Game &&
 
-          <div id="game"><Game socket={socket} id={id} user={user} room={room} def={def} /></div>
+          <div id="game"><Lobby socket={socket} id={id} user={user} room={room} def={def} /></div>
         }
 
     </div>
