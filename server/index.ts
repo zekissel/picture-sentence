@@ -38,7 +38,6 @@ type Callback = (r: Response | LobbyResponse | GameResponse) => void;
 interface RoomSettings { max: number, pass: string, chat: boolean, rounds: number }
 interface InboundMenu { room: string; user: string; settings: RoomSettings | undefined; pass: string | undefined }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
-interface InboundHost { room: string; id: number; kick: number; code: number; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
 
 /* --------------- GAME VARIABLES */
@@ -48,6 +47,7 @@ const LOBBY = new Map<Key, Actor[]>();
 const GAME = new Map<Key, Paper[]>();
 
 
+/* --------------- HELPER FUNCTIONS */
 const isActive = (room: string) => {
   const active = GAME.get(room);
   return active !== undefined;
@@ -59,7 +59,28 @@ const createRoom = (room: string, settings: RoomSettings) => {
   GAME.delete(room);
 }
 
-/* --------------- HELPER FUNCTIONS */
+interface msgNode { room: string, author: string, msg: string, code: number }
+const notifyLobby = (socket: Socket, node: msgNode) => {
+  const lobbyLoad = {
+    status: node.code === 2 ? `start` : `ok`,
+    msg: node.msg, 
+    author: node.author, 
+    actors: LOBBY.get(node.room),
+    disabled: SETTINGS.get(node.room)?.chat ? undefined : true,
+  };
+  switch (node.code) {
+    case -1:
+      socket.to(node.room).emit('adm_poll', lobbyLoad); break;
+    case 0:
+      socket.to(node.room).emit('lobby_poll', lobbyLoad);
+      break;
+    case 1:
+    case 2:
+      socket.to(node.room).emit('lobby_poll', lobbyLoad);
+      socket.emit('lobby_poll', lobbyLoad); break;
+  }
+}
+
 const playerJoin = (socket: Socket, room: string, user: string, serverReply: Callback) => {
 
   const actors = LOBBY.get(room)!;
@@ -75,15 +96,8 @@ const playerJoin = (socket: Socket, room: string, user: string, serverReply: Cal
   serverReply(payload);
 
   /* refresh entire lobby after player joins */
-  const lobbyLoad = { 
-    status: `ok`, 
-    msg: `${user} has joined the room`, 
-    author: ``, 
-    actors: actors,
-    disabled: SETTINGS.get(room)?.chat ? undefined : true,
-  };
-  socket.to(room).emit('lobby_poll', lobbyLoad);
-  socket.emit('lobby_poll', lobbyLoad);
+  const node = { room: room, author: ``, msg: `${user} has joined the room`, code: 1 };
+  notifyLobby(socket, node);
 
 }
 
@@ -113,10 +127,11 @@ const playerExit = (socket: Socket) => {
     });
     LOBBY.set(room[0], room[1]);
   }
+
   if (found && LOBBY.get(key)!.length > 0 && id != 0) {
 
-    const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors };
-    socket.to(key).emit('lobby_poll', lobbyLoad);
+    const node = { room: key, msg: ``, author: `server`, code: 0 };
+    notifyLobby(socket, node);
 
   } else {
     
@@ -124,12 +139,11 @@ const playerExit = (socket: Socket) => {
     GAME.delete(key);
     LOBBY.delete(key);
     
-    const lobbyLoad = { status: `ok`, msg: `Lobby closed by host`, author: `server`, code: -1 };
-    socket.to(key).emit('adm_poll', lobbyLoad);
+    const node = { room: key, msg: `Lobby closed by host`, author: `server`, code: -1 };
+    notifyLobby(socket, node);
   }
 
   socket.leave(key);
-  console.log(`User exited room and/or disconnected`, socket.id);
 }
 
 const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
@@ -140,9 +154,8 @@ const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
     LOBBY.set(room, actors);
     GAME.set(room, []);
 
-    const lobbyLoad = { status: `start`, msg: ``, author: `server`, actors: actors, code: 0 };
-    socket.to(room).emit(`lobby_poll`, lobbyLoad);
-    socket.emit(`lobby_poll`, lobbyLoad);
+    const node = { room: room, msg: ``, author: `server`, code: 2 };
+    notifyLobby(socket, node);
   }
 }
 
@@ -210,13 +223,14 @@ io.on('connection', (socket: Socket) => {
 
   });
 
+  interface InboundHost { room: string; id: number; kick: number; code: number; }
   socket.on(`signal_adm`, (client: InboundHost) => {
 
     if (client.code < 0) {
     
       const payload = { status: `ok`, msg: `Kicked from room by host`, code: -1 };
-      const lob = LOBBY.get(client.room);
-      lob?.forEach((a) => {
+      const lobby = LOBBY.get(client.room);
+      lobby?.forEach((a) => {
         if (a.id == client.kick) {
           socket.to(a.socket).emit(`adm_poll`, payload);
           return;
@@ -230,6 +244,7 @@ io.on('connection', (socket: Socket) => {
   socket.on('exit_room', (client: InboundMenu) => {
     
     playerExit(socket);
+    console.log(`User ${socket.id} exited room ${client.room}`);
 
   });
 
@@ -248,9 +263,8 @@ io.on('connection', (socket: Socket) => {
     });
     LOBBY.set(client.room, actors);
 
-    /* transmit to lobby for messages and ready-up */ /* add filter to client msg if host opted */
-    const lobbyLoad = { status: `ok`, msg: client.msg, author: client.user, actors: actors, code: 0 };
-    socket.to(client.room).emit('lobby_poll', lobbyLoad);
+    const node = { room: client.room, msg: client.msg, author: client.user, code: 0 };
+    notifyLobby(socket, node);
 
     const payload = { status: `ok`, msg: ``, author: `server`, actors: actors, code: client.ready ? 1 : -1 };
     serverReply(payload);
@@ -323,6 +337,7 @@ io.on('connection', (socket: Socket) => {
   socket.on('disconnect', () => {
 
     playerExit(socket);
+    console.log(`User ${socket.id} disconnected`);
     
   });
 

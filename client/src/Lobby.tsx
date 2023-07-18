@@ -204,8 +204,8 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
     })
 
     socket.on(`adm_poll`, (inbound: any) => {
-      switch (inbound.code) {
-        case -1: 
+      switch (inbound.status) {
+        case `ok`: 
           console.log(`Kicked from server by host!`);
           disconnect();
           break;
