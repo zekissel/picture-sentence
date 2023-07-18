@@ -35,8 +35,8 @@ interface LobbyResponse { status: string; msg: string; author: string; actors: A
 interface Response { status: string; msg: string; code: number; }
 type Callback = (r: Response | LobbyResponse | GameResponse) => void;
 
-interface RoomSettings { max: number, pass: string, ready: boolean, censor: boolean, rounds: number }
-interface InboundMenu { room: string; user: string; opt: RoomSettings | undefined; pass: string | undefined }
+interface RoomSettings { max: number, pass: string, chat: boolean, rounds: number }
+interface InboundMenu { room: string; user: string; settings: RoomSettings | undefined; pass: string | undefined }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
 interface InboundHost { room: string; id: number; kick: number; code: number; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
@@ -53,8 +53,7 @@ const isActive = (room: string) => {
   return active !== undefined;
 }
 
-const createRoom = (room: string, settings: RoomSettings | undefined) => {
-  if (!settings) settings = { max: 0, pass: ``, ready: true, censor: false, rounds: 7 }
+const createRoom = (room: string, settings: RoomSettings) => {
   SETTINGS.set(room, settings);
   LOBBY.set(room, []);
   GAME.delete(room);
@@ -66,7 +65,6 @@ const playerJoin = (socket: Socket, room: string, user: string, serverReply: Cal
   const actors = LOBBY.get(room)!;
   const a = { socket: socket.id, id: actors.length, user: user, ready: false }
   actors.push(a); LOBBY.set(room, actors);
-  
 
   socket.join(room);
 
@@ -80,8 +78,8 @@ const playerJoin = (socket: Socket, room: string, user: string, serverReply: Cal
   const lobbyLoad = { 
     status: `ok`, 
     msg: `${user} has joined the room`, 
-    author: `server`, 
-    actors: actors ?? [{ socket: socket.id, id: 0, user: user, ready: false }] 
+    author: ``, 
+    actors: actors,
   };
   socket.to(room).emit('lobby_poll', lobbyLoad);
   socket.emit('lobby_poll', lobbyLoad);
@@ -94,6 +92,7 @@ const playerExit = (socket: Socket) => {
   let found = false;
   let key: string = ``;
   let actors: Actor[] = [];
+  let id = -1;
 
   for (let room of lobbies) {
     if (found) break;
@@ -103,6 +102,7 @@ const playerExit = (socket: Socket) => {
         found = true;
         key = room[0];
         actors = room[1];
+        id = actor.id;
         
         let papers = GAME.get(room[0]);
         papers = papers?.filter((p) => { return p.id !== actor.id; });
@@ -112,18 +112,23 @@ const playerExit = (socket: Socket) => {
     });
     LOBBY.set(room[0], room[1]);
   }
-  if (found && LOBBY.get(key)!.length > 0) {
+  if (found && LOBBY.get(key)!.length > 0 && id != 0) {
 
     const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors };
     socket.to(key).emit('lobby_poll', lobbyLoad);
 
-  } else if (found) {
+  } else {
     
+    SETTINGS.delete(key);
     GAME.delete(key);
     LOBBY.delete(key);
-    console.log(`Room ${key} returned to available keys.`);
+    
+    const lobbyLoad = { status: `ok`, msg: `Lobby closed by host`, author: `server`, code: -1 };
+    socket.to(key).emit('adm_poll', lobbyLoad);
   }
+
   socket.leave(key);
+  console.log(`User exited room and/or disconnected`, socket.id);
 }
 
 const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
@@ -146,7 +151,7 @@ io.on('connection', (socket: Socket) => {
   console.log(`User Connected: ${socket.id}`);
 
   /* CREATE ROOM */
-  socket.on('host_room', (client: InboundMenu, serverReply: Callback) => {
+  socket.on('host', (client: InboundMenu, serverReply: Callback) => {
 
     if (LOBBY.has(client.room)) {
       const payload = { status: `err`, msg: `Game key is already in use!`, code: -1  }
@@ -158,14 +163,14 @@ io.on('connection', (socket: Socket) => {
       serverReply(payload); return;
     }*/
 
-    createRoom(client.room, client.opt);
+    createRoom(client.room, client.settings!);
     
     playerJoin(socket, client.room, client.user, serverReply);
 
   });
 
   /* JOIN PRE-EXISTING ROOM */
-  socket.on('join_room', (client: InboundMenu, serverReply: Callback) => {
+  socket.on('join', (client: InboundMenu, serverReply: Callback) => {
 
     if (!LOBBY.has(client.room)) {
       const payload = { status: `err`, msg: `Invalid game key!`, code: -1  }
@@ -189,7 +194,7 @@ io.on('connection', (socket: Socket) => {
 
   });
 
-  socket.on(`room_auth`, (client: InboundMenu, serverReply: Callback) => {
+  socket.on(`auth`, (client: InboundMenu, serverReply: Callback) => {
 
     if (!LOBBY.has(client.room)) {
       const payload = { status: `err`, msg: `Invalid game key!`, code: -1  }
@@ -204,30 +209,20 @@ io.on('connection', (socket: Socket) => {
 
   });
 
-  socket.on(`host_opt`, (client: InboundHost) => {
+  socket.on(`signal_adm`, (client: InboundHost) => {
+
     if (client.code < 0) {
-
+    
       const payload = { status: `ok`, msg: `Kicked from room by host`, code: -1 };
-
       const lob = LOBBY.get(client.room);
       lob?.forEach((a) => {
         if (a.id == client.kick) {
-          socket.to(a.socket).emit(`lobby_adm`, payload);
+          socket.to(a.socket).emit(`adm_poll`, payload);
+          return;
         }
       });
-
-      let papers = GAME.get(client.room);
-      papers = papers?.filter((p) => { return p.id !== client.kick; });
-      if (papers) GAME.set(client.room, papers);
-
-      let actors = LOBBY.get(client.room);
-      actors = actors!.filter((a) => { return a.id !== client.kick; });
-      LOBBY.set(client.room, actors);
-
-      const lobbyLoad = { status: `ok`, msg: ``, author: `server`, actors: actors, code: 0 };
-      socket.to(client.room).emit(`lobby_poll`, lobbyLoad);
-      socket.emit(`lobby_poll`, lobbyLoad);
     }
+
   })
 
   /* EXIT ROOM */
@@ -260,7 +255,7 @@ io.on('connection', (socket: Socket) => {
     serverReply(payload);
 
     /* determine when to start game */
-    if (!isActive(client.room) && SETTINGS.get(client.room)?.ready) determineStart(socket, client.room, actors);
+    if (!isActive(client.room)) determineStart(socket, client.room, actors);
 
   });
 
@@ -327,7 +322,7 @@ io.on('connection', (socket: Socket) => {
   socket.on('disconnect', () => {
 
     playerExit(socket);
-    console.log(`User Disconnected`, socket.id);
+    
   });
 
 });

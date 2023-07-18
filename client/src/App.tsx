@@ -19,14 +19,15 @@ interface ClientProps {
 
 function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(``);
   const [auth, setAuth] = useState(false);
   const [pass, setPass] = useState(``);
   
   const joinGame = () => {
     if (user !== "" && room !== "") {
+      setErr(``);
       const payload = { room: room, user: user };
-      socket.emit("join_room", payload, (res: Response) => {
+      socket.emit("join", payload, (res: Response) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
           case `auth`: setAuth(true); break;
@@ -40,7 +41,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   const enterPass = () => {
     if (pass !== ``) {
       const payload = { room: room, user: user, pass: pass };
-      socket.emit("room_auth", payload, (res: Response) => {
+      socket.emit("auth", payload, (res: Response) => {
         switch (res.status) {
           case `err`: setErr(res.msg); setAuth(false); break;
           case `ok`: setID(res.code); game(); break;
@@ -53,12 +54,28 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   return (
     <menu>
       <li><button onClick={def}>Go back</button></li>
-      <li><input type="text" placeholder="Nickname" onChange={(e) => { setUser(e.target.value); }} /></li>
-      <li><input type="text" placeholder="Room Key" onChange={(e) => { setRoom(e.target.value); }} /></li>
-      { auth && <li><input type="text" placeholder="Enter room password" onChange={(e) => { setPass(e.target.value); }} /></li> }
-      { !auth && <li><button onClick={joinGame}>Join</button></li> }
-      { auth && <li><button onClick={enterPass}>Enter</button></li> }
-      <p>{ err }</p>
+
+      <fieldset>
+        <legend>Connect</legend>
+        <li>
+          <input type="text" placeholder="Nickname" value={user} onChange={(e) => { setUser(e.target.value); }} />
+          </li>
+        <li>
+          <input type="text" placeholder="Room Key" onChange={(e) => { setRoom(e.target.value); }} />
+          </li>
+        { !auth && <li><button onClick={joinGame}>Join</button></li> }
+        { auth && <li><button onClick={ () => setAuth(false) }>Cancel</button></li> }
+      </fieldset>
+
+      { auth &&
+        <fieldset>
+          <legend>Confirm</legend>
+          <li><input type="text" placeholder="Enter room password" onChange={(e) => { setPass(e.target.value); }} /></li>
+          <li><button onClick={enterPass}>Enter</button></li>
+        </fieldset>
+      }
+
+      <li><em>{ err }</em></li>
     </menu>
   )
 }
@@ -70,15 +87,15 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 
   const [playerMax, setPlayerMax] = useState(0);
   const [passKey, setPassKey] = useState(``);
-  const [useReady, setUseReady] = useState(true);
-  const [censor, setCensor] = useState(false);
+  const [useChat, setUseChat] = useState(true);
   const [rounds, setRounds] = useState(7);
 
   const hostGame = () => {
     if (user !== "" && room !== "") {
-      const roomOpt = { max: playerMax, pass: passKey, ready: useReady, censor: censor, rounds: rounds }
-      const payload = { room: room, user: user, opt: roomOpt };
-      socket.emit("host_room", payload, (res: Response) => {
+      setErr(``);
+      const roomOpt = { max: playerMax ?? 0, pass: passKey ?? ``, chat: useChat, rounds: rounds ?? 7 }
+      const payload = { room: room, user: user, settings: roomOpt };
+      socket.emit("host", payload, (res: Response) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
           case `ok`: setID(res.code); game(); break;
@@ -90,31 +107,49 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 
   return (
     <menu>
-      <li><button onClick={def}>Go back</button></li>
-      <li><input type="text" placeholder="Nickname" onChange={(e) => { setUser(e.target.value); }} /></li>
-      <li><input type="text" placeholder="Create key" onChange={(e) => { setRoom(e.target.value); }} /></li>
-      <li><input type="text" placeholder="Create password (Optional)" onChange={(e) => { setPassKey(e.target.value); }} /></li>
-      <li><input type="number" placeholder="Limit # players (Optional)" onChange={(e) => { setPlayerMax(Math.abs(Math.round(Number(e.target.value)))); }} /></li>
-      <li><input type="number" placeholder="# rounds (Optional - default 7)" onChange={(e) => { setRounds(Math.abs(Math.round(Number(e.target.value)))); }} /></li>
-      <li></li>
-      <fieldset onChange={(e: any) => setUseReady( e.target.value === `player` )}>
-        <li><input type="radio" name="start" id='p' value='player' defaultChecked/><label htmlFor="p">Players ready up to start</label></li>
-        <li><input type="radio" name="start" id='h' value='host' /><label htmlFor="h">Host starts game</label></li>
-      </fieldset>
+      <li><button onClick={def}>Back</button></li>
+
       <fieldset>
+        <legend>User</legend>
         <li>
-          <select name="censor" onChange={(e: any) => { setCensor(e.target.value === 1) }}>
+          <input type="text" placeholder="Nickname" value={user} onChange={(e) => { setUser(e.target.value); }} />
+        </li>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lobby</legend>
+        <li>
+          <input type="text" placeholder="Unique key (required)" onChange={(e) => { setRoom(e.target.value); }} />
+        </li>
+        <li>
+          <input type="text" placeholder="Create password (optional)" onChange={(e) => { setPassKey(e.target.value); }} />
+          </li>
+        <li>
+          <input type="number" placeholder="Player capacity (optional)" onChange={(e) => { setPlayerMax(Math.abs(Math.round(Number(e.target.value)))); }} />
+        </li>
+      </fieldset>
+      
+      <fieldset>
+        <legend>Game</legend>
+        <li>
+          <input name="numround" type="number" placeholder="# Rounds (optional / default 7)" onChange={(e) => { setRounds(Math.abs(Math.round(Number(e.target.value)))); }} />
+        </li>
+        <li>
+          <label htmlFor="usechat">Chat: </label>
+          <select name="usechat" onChange={(e: any) => { setUseChat(e.target.value === 0) }}>
             <option value={0} >
-              No language censorship
+              Enabled
             </option>
             <option value={1}>
-              Use offensive language filter
+              Disabled
             </option>
           </select>
         </li>
       </fieldset>
+
       <li><button onClick={hostGame}>Host</button></li>
-      <p>{ err }</p>
+
+      <li><em>{ err }</em></li>
     </menu>
   )
 }
@@ -129,7 +164,7 @@ export default function App() {
   const [toggleMenu, setMenuTog] = useState(MenuMode.Default);
   const host = () => { setMenuTog(MenuMode.Host); }
   const join = () => { setMenuTog(MenuMode.Join); }
-  const def = () => { setMenuTog(MenuMode.Default); }
+  const def = () => { setMenuTog(MenuMode.Default); setRoom(``); }
   const game = () => { setMenuTog(MenuMode.Game); }
 
   return (

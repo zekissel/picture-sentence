@@ -179,14 +179,8 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
 
   const kick = (e: any) => {
     const payload = { room: room, id: id, kick: e.target.id, code: -1 }
-    socket.emit("host_opt", payload);
+    socket.emit('signal_adm', payload);
   }
-
-  /*
-  const start = () => {
-    const payload = { room: room, id: id, kick: -1, code: 1 }
-    socket.emit("host_opt", payload);
-  }*/
   
 
   useEffect(() => {
@@ -206,9 +200,12 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
       }
     })
 
-    socket.on(`lobby_adm`, (inbound: any) => {
+    socket.on(`adm_poll`, (inbound: any) => {
       switch (inbound.code) {
-        case -1: def(); console.log(`Kicked from server by host!`); break;
+        case -1: 
+          console.log(`Kicked from server by host!`);
+          disconnect();
+          break;
       }
     });
 
@@ -222,6 +219,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
       <div id='lobby'>
         <p>{ err }</p>
         <button onClick={disconnect}>Exit Room</button>
+        <h3>Lobby: { room }</h3>
         <h3>Players</h3>
         <ul id='playerList'>
           { actors?.map((v, i) => { 
