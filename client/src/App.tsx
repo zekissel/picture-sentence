@@ -23,6 +23,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   const [auth, setAuth] = useState(false);
   const [pass, setPass] = useState(``);
   
+  const enterGo = (e: any) => { if (e.key == `Enter`) joinGame(); }
   const joinGame = () => {
     if (user !== "" && room !== "") {
       setErr(``);
@@ -63,7 +64,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
           <input type="text" placeholder="Nickname" value={user} onChange={(e) => { setUser(e.target.value); }} />
           </li>
         <li>
-          <input type="text" placeholder="Room Key" onChange={(e) => { setRoom(e.target.value); }} />
+          <input type="text" placeholder="Room Key" onKeyDown={enterGo} onChange={(e) => { setRoom(e.target.value); }} />
           </li>
         { !auth && <li><button onClick={joinGame}>Join</button></li> }
         { auth && <li><button onClick={ () => setAuth(false) }>Cancel</button></li> }
@@ -92,6 +93,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   const [useChat, setUseChat] = useState(true);
   const [rounds, setRounds] = useState(7);
 
+  const enterGo = (e: any) => { if (e.key == `Enter`) hostGame(); }
   const hostGame = () => {
     if (user !== "" && room !== "") {
       setErr(``);
@@ -121,7 +123,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       <fieldset>
         <legend>Lobby</legend>
         <li>
-          <input type="text" placeholder="Unique key (required)" onChange={(e) => { setRoom(e.target.value); }} />
+          <input type="text" placeholder="Unique key (required)" onKeyDown={enterGo} onChange={(e) => { setRoom(e.target.value); }} />
         </li>
         <li>
           <input type="text" placeholder="Create password (optional)" onChange={(e) => { setPassKey(e.target.value); }} />

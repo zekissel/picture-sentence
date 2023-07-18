@@ -229,11 +229,11 @@ io.on('connection', (socket: Socket) => {
 
     if (client.code < 0) {
     
-      const payload = { status: `ok`, msg: `Kicked from room by host`, code: -1 };
+      const payload = { status: `kick`, msg: `Kicked from room by host`, code: -1 };
       const lobby = LOBBY.get(client.room);
       lobby?.forEach((a) => {
         if (a.id == client.kick) {
-          socket.to(a.socket).emit(`adm_poll`, payload);
+          socket.to(a.socket).emit(`lobby_poll`, payload);
           return;
         }
       });

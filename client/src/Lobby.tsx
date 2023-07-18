@@ -200,19 +200,13 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
           if (inbound.disabled) setNoChat(true);
           break;
         case `start`: setPhase(1); setReady(false); break;
+        case `kick`: 
+          console.log(`Kicked from server by host!`);
+          disconnect(); break;
         default: break;
       }
     })
-
-    socket.on(`adm_poll`, (inbound: any) => {
-      switch (inbound.status) {
-        case `ok`: 
-          console.log(`Kicked from server by host!`);
-          disconnect();
-          break;
-      }
-    });
-
+    
   }, [socket]);
 
   const regCol = {background: `#545652`};
