@@ -55,7 +55,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   }
 
   return (
-    <menu>
+    <menu className="join">
       <li><button onClick={def}>Back</button></li>
 
       <fieldset>
@@ -110,7 +110,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   };
 
   return (
-    <menu>
+    <menu className="host">
       <li><button onClick={def}>Back</button></li>
 
       <fieldset>
@@ -126,8 +126,8 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
           <input type="text" placeholder="Unique key (required)" onKeyDown={enterGo} onChange={(e) => { setRoom(e.target.value); }} />
         </li>
         <li>
-          <input type="text" placeholder="Create password (optional)" onChange={(e) => { setPassKey(e.target.value); }} />
-          </li>
+          <input type="text" placeholder="Password (optional)" onChange={(e) => { setPassKey(e.target.value); }} />
+        </li>
         <li>
           <input type="number" placeholder="Player capacity (optional)" onChange={(e) => { setPlayerMax(Math.abs(Math.round(Number(e.target.value)))); }} />
         </li>
@@ -136,7 +136,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       <fieldset>
         <legend>Game</legend>
         <li>
-          <input name="numround" type="number" placeholder="# Rounds (optional / default 7)" onChange={(e) => { setRounds(Math.abs(Math.round(Number(e.target.value)))); }} />
+          <input name="numround" type="number" placeholder="# Rounds (default 7)" onChange={(e) => { setRounds(Math.abs(Math.round(Number(e.target.value)))); }} />
         </li>
         <li>
           <label htmlFor="usechat">Chat: </label>
@@ -150,6 +150,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
           </select>
         </li>
       </fieldset>
+      <br/>
 
       <li><button onClick={hostGame}>Host</button></li>
 

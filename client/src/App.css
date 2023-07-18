@@ -17,8 +17,12 @@ body {
 
 #game {
   display: flex;
-  flex-direction: row;
   flex-grow: 2;
+  flex-direction: row;
+
+  @media screen and (max-width: 650px) {
+    flex-direction: column;
+  }
 }
 
 #lobby {
@@ -32,7 +36,11 @@ body {
   padding: 2%;
   margin: 0 1%;
   flex-grow: 3;
-  min-width: 408px;
+  min-width: 40vw;
+
+  @media screen and (max-width: 650px) {
+    min-width: 95%;
+  }
 }
 
 ul, menu, li {
@@ -42,16 +50,30 @@ ul, menu, li {
   padding: 1% 0;
 }
 
+.host, .join {
+  text-align: center;
+}
+
 button {
   color: #EEE;
   background-color: #333;
   width: 15vw;
   height: 3.5vh;
+
+  @media screen and (max-width: 650px) {
+    width: 40vw;
+    height: 6vh;
+  }
 }
 
 input {
   width: 20vw;
   height: 3vh;
+
+  @media screen and (max-width: 650px) {
+    width: 90%;
+    height: 5vh;
+  }
 }
 
 #chat, #playerList {
@@ -62,8 +84,11 @@ input {
   overflow: scroll;
   overflow-x: hidden;
   padding: 1%;
-  width: 100%;
-  max-width: 25vw;
+  width: 95%;
+
+  @media screen and (min-width: 650px) {
+    max-width: 45vw;
+  }
 }
 
 #chat, #playerList > li {

@@ -65,7 +65,7 @@ const notifyLobby = (socket: Socket, node: msgNode) => {
     status: node.code == 2 ? `start` : `ok`,
     msg: node.msg, 
     author: node.author, 
-    actors: LOBBY.get(node.room),
+    actors: LOBBY.get(node.room)!,
     disabled: SETTINGS.get(node.room)?.chat ? undefined : true,
   };
 
@@ -151,7 +151,7 @@ const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
   let ready = true;
   actors.forEach((a) => { if (!a.ready) ready = false; });
   if (ready) {
-    actors.map((v) => { v.ready = false; return v; });
+    actors.forEach((v) => { v.ready = false; });
     LOBBY.set(room, actors);
     GAME.set(room, []);
 
