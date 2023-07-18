@@ -35,6 +35,8 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
           default: break;
         }
       });
+    } else {
+      /* highlight blank field in red */
     }
   };
 

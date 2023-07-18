@@ -80,6 +80,7 @@ const playerJoin = (socket: Socket, room: string, user: string, serverReply: Cal
     msg: `${user} has joined the room`, 
     author: ``, 
     actors: actors,
+    disabled: SETTINGS.get(room)?.chat ? undefined : true,
   };
   socket.to(room).emit('lobby_poll', lobbyLoad);
   socket.emit('lobby_poll', lobbyLoad);

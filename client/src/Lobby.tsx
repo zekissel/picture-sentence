@@ -138,6 +138,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
   const updateOut = (e: any) => { setOutbound(e.target.value); }
   const [chat, setChat] = useState<string[]>([]);
   const btmTxt = useRef<HTMLLIElement>(null);
+  const [noChat, setNoChat] = useState(false);
 
   const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false }]);
   const [gamePhase, setPhase] = useState(0);
@@ -194,7 +195,9 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
           if (inbound.msg !== ``) {
             setChat((msgs) => [...msgs, `${inbound.msg} - ${inbound.author}`]);
             btmTxt.current?.scrollIntoView({ behavior: "smooth" }); 
-          } break;
+          } 
+          if (inbound.disabled) setNoChat(true);
+          break;
         case `start`: setPhase(1); setReady(false); break;
         default: break;
       }
@@ -223,7 +226,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
         <h3>Players</h3>
         <ul id='playerList'>
           { actors?.map((v, i) => { 
-            return  <li key={i}> { v.user } 
+            return  <li key={i}> { v.user }
                       { v.id === id && (gamePhase <= 0 && <button id='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
                       { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
 
@@ -238,7 +241,8 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
           { chat.map((v, i) => { return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { ` ${v}` }</li> }) }
           <li ref={btmTxt}></li>
         </ul>
-        <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend}/><button onClick={sendMessage}>Send Message</button>
+        <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend} disabled={noChat}/>
+        <button onClick={sendMessage} disabled={noChat}>Send Message</button>
       </div>
 
       <div id='field'>
