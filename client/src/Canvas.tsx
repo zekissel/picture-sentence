@@ -56,7 +56,9 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
                 width={width}
                 height={height}
                 onMouseDown={onCanvasMouseDown}
+                onTouchStart={onCanvasMouseDown}
                 onMouseUp={exportImage}
+                onTouchEnd={exportImage}
                 style={canvasStyle}
                 ref={setCanvasRef}
             />

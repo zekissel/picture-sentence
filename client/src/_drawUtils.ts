@@ -12,6 +12,9 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
     const mouseMoveListenerRef = useRef<((e: MouseEvent) => void) | null>(null);
     const mouseUpListenerRef = useRef<(() => void) | null>(null);
 
+    const touchMoveListenerRef = useRef<((e: TouchEvent) => void) | null>(null);
+    const touchEndListenerRef = useRef<(() => void) | null>(null);
+
     function setCanvasRef(ref: HTMLCanvasElement) {
         canvasRef.current = ref;
     }
@@ -49,25 +52,47 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
             window.addEventListener("mousemove", mouseMoveListener);
         }
 
+        function initTouchMoveListener() {
+            const touchMoveListener = (e: TouchEvent) => {
+                if (isDrawingRef.current && canvasRef.current) {
+                    const point = computePointInCanvas(e.touches[0].clientX, e.touches[0].clientY);
+                    const ctx = canvasRef.current.getContext('2d');
+                    if (onDraw) onDraw(ctx, point, prevPointRef.current);
+                    prevPointRef.current = point;
+                }
+            }
+            touchMoveListenerRef.current = touchMoveListener;
+            window.addEventListener("touchmove", touchMoveListener);
+        }
+
         function initMouseUpListener() {
             const listener = () => {
                 isDrawingRef.current = false;
                 prevPointRef.current = null;
             }
             mouseUpListenerRef.current = listener;
+            touchEndListenerRef.current = listener;
             window.addEventListener("mouseup", listener);
+            window.addEventListener("touchend", listener);
         }
 
         function cleanup() {
             if (mouseMoveListenerRef.current) {
                 window.removeEventListener("mousemove", mouseMoveListenerRef.current);
             }
+            if (touchMoveListenerRef.current) {
+                window.removeEventListener("touchmove", touchMoveListenerRef.current);
+            }
             if (mouseUpListenerRef.current) {
                 window.removeEventListener("mouseup", mouseUpListenerRef.current);
+            }
+            if (touchEndListenerRef.current) {
+                window.removeEventListener("touchend", touchEndListenerRef.current);
             }
         }
 
         initMouseMoveListener();
+        initTouchMoveListener();
         initMouseUpListener();
         return () => cleanup();
 
