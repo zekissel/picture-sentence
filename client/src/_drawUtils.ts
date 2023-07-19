@@ -49,7 +49,7 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
                 }
             }
             mouseMoveListenerRef.current = mouseMoveListener;
-            window.addEventListener("mousemove", mouseMoveListener);
+            window.addEventListener("mousemove", mouseMoveListener, false);
         }
 
         function initTouchMoveListener() {
@@ -62,7 +62,7 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
                 }
             }
             touchMoveListenerRef.current = touchMoveListener;
-            window.addEventListener("touchmove", touchMoveListener);
+            window.addEventListener("touchmove", touchMoveListener, false);
         }
 
         function initMouseUpListener() {
@@ -72,8 +72,8 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
             }
             mouseUpListenerRef.current = listener;
             touchEndListenerRef.current = listener;
-            window.addEventListener("mouseup", listener);
-            window.addEventListener("touchend", listener);
+            window.addEventListener("mouseup", listener, false);
+            window.addEventListener("touchend", listener, false);
         }
 
         function cleanup() {
