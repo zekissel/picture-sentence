@@ -5,7 +5,7 @@ import Lobby from "./Lobby";
 
 const socket = io("http://localhost:5174");
 
-interface Response { status: string; msg: string; code: number; }
+interface MenuResponse { status: string; msg: string; code: number; }
 
 interface ClientProps {
   setID: React.Dispatch<React.SetStateAction<number>>;
@@ -28,7 +28,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
     if (user !== "" && room !== "") {
       setErr(``);
       const payload = { room: room, user: user };
-      socket.emit("join", payload, (res: Response) => {
+      socket.emit("join", payload, (res: MenuResponse) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
           case `auth`: setAuth(true); break;
@@ -44,7 +44,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   const enterPass = () => {
     if (pass !== ``) {
       const payload = { room: room, user: user, pass: pass };
-      socket.emit("auth", payload, (res: Response) => {
+      socket.emit("auth", payload, (res: MenuResponse) => {
         switch (res.status) {
           case `err`: setErr(res.msg); setAuth(false); break;
           case `ok`: setID(res.code); game(); break;
@@ -99,7 +99,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       setErr(``);
       const roomOpt = { max: playerMax ?? 0, pass: passKey ?? ``, chat: useChat, rounds: rounds ?? 7 }
       const payload = { room: room, user: user, settings: roomOpt };
-      socket.emit("host", payload, (res: Response) => {
+      socket.emit("host", payload, (res: MenuResponse) => {
         switch (res.status) {
           case `err`: setErr(res.msg); break;
           case `ok`: setID(res.code); game(); break;

@@ -1,9 +1,7 @@
-import { Socket } from "socket.io";
-
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
-const { Server } = require("socket.io");
+const { Server, Socket } = require("socket.io");
 
 /* --------------- SERVER STATICS */
 const app = express(); app.use(cors());
@@ -32,8 +30,8 @@ interface Paper {
 
 interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
 interface LobbyResponse { status: string; msg: string; author: string; actors: Actor[], code: number }
-interface Response { status: string; msg: string; code: number; }
-type Callback = (r: Response | LobbyResponse | GameResponse) => void;
+interface MenuResponse { status: string; msg: string; code: number; }
+type Callback = (r: MenuResponse | LobbyResponse | GameResponse) => void;
 
 interface RoomSettings { max: number, pass: string, chat: boolean, rounds: number }
 interface InboundMenu { room: string; user: string; settings: RoomSettings | undefined; pass: string | undefined }
@@ -60,28 +58,23 @@ const createRoom = (room: string, settings: RoomSettings) => {
 }
 
 interface msgNode { room: string, author: string, msg: string, code: number }
-const notifyLobby = (socket: Socket, node: msgNode) => {
+const notifyLobby = (socket: typeof Socket, node: msgNode) => {
+  let stat = `ok`;
+  if (node.code == -1) stat = `kick`;
+  if (node.code == 2) stat = `start`;
   const lobbyLoad = {
-    status: node.code == 2 ? `start` : `ok`,
+    status: stat,
     msg: node.msg, 
     author: node.author, 
     actors: LOBBY.get(node.room)!,
     disabled: SETTINGS.get(node.room)?.chat ? undefined : true,
   };
 
-  switch (node.code) {
-    case -1:
-      socket.to(node.room).emit('adm_poll', lobbyLoad); break;
-    case 0:
-      socket.to(node.room).emit('lobby_poll', lobbyLoad);
-      break;
-    default:
-      socket.to(node.room).emit('lobby_poll', lobbyLoad);
-      socket.emit('lobby_poll', lobbyLoad); break;
-  }
+  socket.to(node.room).emit('lobby_poll', lobbyLoad);
+  if (node.code !== -1) socket.emit('lobby_poll', lobbyLoad);
 }
 
-const playerJoin = (socket: Socket, room: string, user: string, serverReply: Callback) => {
+const playerJoin = (socket: typeof Socket, room: string, user: string, serverReply: Callback) => {
 
   const actors = LOBBY.get(room)!;
   const a = { socket: socket.id, id: actors.length, user: user, ready: false }
@@ -101,7 +94,7 @@ const playerJoin = (socket: Socket, room: string, user: string, serverReply: Cal
 
 }
 
-const playerExit = (socket: Socket) => {
+const playerExit = (socket: typeof Socket) => {
 
   const lobbies = LOBBY.entries();
   let found = false;
@@ -128,6 +121,8 @@ const playerExit = (socket: Socket) => {
     LOBBY.set(room[0], room[1]);
   }
 
+  socket.leave(key);
+
   if (found && LOBBY.get(key)!.length > 0 && id != 0) {
 
     const node = { room: key, msg: ``, author: `server`, code: 0 };
@@ -143,10 +138,9 @@ const playerExit = (socket: Socket) => {
     notifyLobby(socket, node);
   }
 
-  socket.leave(key);
 }
 
-const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
+const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) => {
 
   let ready = true;
   actors.forEach((a) => { if (!a.ready) ready = false; });
@@ -162,7 +156,7 @@ const determineStart = (socket: Socket, room: string, actors: Actor[] ) => {
 
 
 /* --------------- WEBSOCKET ROUTES */
-io.on('connection', (socket: Socket) => {
+io.on('connection', (socket: typeof Socket) => {
   console.log(`User Connected: ${socket.id}`);
 
   /* CREATE ROOM */
