@@ -3,10 +3,10 @@
 A classic word and image game, guaranteed to catalyze family fun. Developed using React and Socket.io. 
 
 ## For Development:
-*Activate 1. Express and 2. React servers*
-1. Navigate to server/ and type ```npm start```
-2. Navigate to client/ and type ```npm run dev```
-3. In your browser, navigate to localhost:5173
+*Install node and start 1) Express and 2) React servers*
+1. Navigate to `picture-sentence/server/` and type ```npm i``` and then ```npm start```
+2. Navigate to `picture-sentence/client/` and type ```npm i``` and then ```npm run dev```
+3. In your browser, navigate to ```http://localhost:5173/```
 
 ## To Play:
 *Best suitaible for 4+ players*
