@@ -206,7 +206,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
         default: break;
       }
     })
-    
+
   }, [socket]);
 
   const regCol = {background: `#545652`};
@@ -220,6 +220,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
         <fieldset>
           <legend>{ room }</legend>
           <button onClick={disconnect}>Exit</button>
+          <button className='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button>
         </fieldset>
 
         <fieldset>
@@ -227,10 +228,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
           <ul id='playerList'>
             { actors?.map((v, i) => { 
               return  <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { v.user }
-                        { v.id === id && (gamePhase <= 0 && <button className='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> )}
-                        { v.id !== id && (gamePhase <= 0 && <label>{ v.ready ? '✓' : '✗' }</label> )}
-
-                        { gamePhase > 0 && <label>{ v.ready !== false ? '✓' : '✗' }</label> }
+                        <label>{ v.ready ? '✓' : '✗' }</label>
 
                         { v.id !== id && (id === 0 && <button className='kick' id={String(v.id)} onClick={kick}>Kick</button>) }
                       </li> })

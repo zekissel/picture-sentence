@@ -59,6 +59,7 @@ button {
   background-color: #333;
   width: 15vw;
   height: 3.5vh;
+  border-radius: 8px;
 
   @media screen and (max-width: 650px) {
     width: 40vw;
@@ -95,9 +96,13 @@ input {
   padding: 0 2%;
 }
 
-.ready, .kick {
+.kick {
   width: auto;
   height: 3vh;
+
+  @media screen and (max-width: 650px) {
+    height: 4vh;
+  }
 }
 
 .paper {
