@@ -2,12 +2,6 @@
 
 A classic word and image game, guaranteed to catalyze family fun. Developed using React and Socket.io. 
 
-## For Development:
-*Install node and start 1) Express and 2) React servers*
-1. Navigate to `picture-sentence/server/` and type ```npm i``` and then ```npm start```
-2. Navigate to `picture-sentence/client/` and type ```npm i``` and then ```npm run dev```
-3. In your browser, navigate to ```http://localhost:5173/```
-
 ## To Play:
 *Best suitaible for 4+ players*
 
@@ -28,3 +22,9 @@ A classic word and image game, guaranteed to catalyze family fun. Developed usin
 3. All other players select to join the room with the specified key.
 4. Once in the lobby, players can send messages or opt to ready up.
 5. Once all players are ready, the game commences and functions as above.
+
+## For Development:
+*Install node and start 1) Express and 2) React servers*
+1. Navigate to `picture-sentence/server/` and type ```npm i``` and then ```npm start```
+2. Navigate to `picture-sentence/client/` and type ```npm i``` and then ```npm run dev```
+3. In your browser, navigate to ```http://localhost:5173/```
