@@ -201,7 +201,6 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
           break;
         case `start`: setPhase(1); setReady(false); break;
         case `kick`: 
-          console.log(`Kicked from server by host!`);
           disconnect(); break;
         default: break;
       }
@@ -212,6 +211,9 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
   const regCol = {background: `#545652`};
   const altCol = {background: `#445652`};
 
+  const green = { color: `green` };
+  const red = { color: `red` };
+
   return (
     <>
       <div id='lobby'>
@@ -220,15 +222,18 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
         <fieldset>
           <legend>{ room }</legend>
           <button onClick={disconnect}>Exit</button>
-          <button className='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button>
+          { gamePhase < 1 && <button className='ready' onClick={readyUp}>{ ready ? 'Cancel' : 'Ready Up' }</button> }
         </fieldset>
 
         <fieldset>
           <legend>Players</legend>
           <ul id='playerList'>
             { actors?.map((v, i) => { 
-              return  <li key={i} style={ i % 2 == 0 ? regCol : altCol}> { v.user }
-                        <label>{ v.ready ? '✓' : '✗' }</label>
+              return  <li key={i} style={ i % 2 == 0 ? regCol : altCol}> 
+              
+                        <span className='user'>{ v.user }</span>
+                        
+                        <label className='check' style={ v.ready ? green : red }>{ v.ready ? '✓' : '✗' }</label>
 
                         { v.id !== id && (id === 0 && <button className='kick' id={String(v.id)} onClick={kick}>Kick</button>) }
                       </li> })

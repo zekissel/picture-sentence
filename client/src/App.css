@@ -94,11 +94,27 @@ input {
 
 #chat, #playerList > li {
   padding: 0 2%;
+  
+}
+
+.user {
+  background-color: #333;
+  border-radius: 8px;
+  padding: 0 2%;
+}
+
+.check {
+  float: right;
+  margin: 0 0 0 2%;
+  padding: 0 2%;
+  background-color: #333;
+  border-radius: 8px;
 }
 
 .kick {
   width: auto;
-  height: 3vh;
+  height: inherit;
+  float: right;
 
   @media screen and (max-width: 650px) {
     height: 4vh;
