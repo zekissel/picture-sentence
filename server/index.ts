@@ -1,18 +1,34 @@
 const express = require("express");
 const http = require("http");
-const cors = require("cors");
+//const cors = require("cors");
 const { Server, Socket } = require("socket.io");
+const path = require('path');
 
 /* --------------- SERVER STATICS */
-const app = express(); app.use(cors());
-const server = http.createServer(app);
-const CLIENT_PORT = 5173;
+//const CLIENT_PORT = 5173;
 const SOCKET_PORT = 5174;
+
+const app = express(); //app.use(cors());
+const server = http.createServer(app);
 const io = new Server(server, {
+  methods: ["GET", "POST"],
+  
+  /*
   cors: {
     origin: `http://localhost:${CLIENT_PORT}`,
     methods: ["GET", "POST"],
-  },
+  },*/
+});
+
+
+app.use(express.static( path.join(__dirname + '/dist') ))
+app.get("/*", function (req: any, res: any) {
+  res.sendFile(
+    path.join(__dirname + '/dist/index.html'),
+    function (err: any) {
+      if (err) res.status(500).send(err);
+    }
+  )
 });
 
 /* --------------- TYPE ANNOTATIONS */
