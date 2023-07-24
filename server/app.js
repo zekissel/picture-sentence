@@ -8,15 +8,22 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 var express = require("express");
-var http = require("http");
+var path = require("path");
+var fs = require("fs");
+var https = require("https");
 //const cors = require("cors");
 var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
-var path = require('path');
 /* --------------- SERVER STATICS */
 //const CLIENT_PORT = 5173;
 var SOCKET_PORT = 5174;
 var app = express(); //app.use(cors());
-var server = http.createServer(app);
+var server = https.createServer({
+    key: fs.readFileSync(process.env.SSL_PDT_KEY || '/etc/letsencrypt/live/picturesentence.com/privkey.pem'),
+    cert: fs.readFileSync(process.env.SSL_PDT_CRT || '/etc/letsencrypt/live/picturesentence.com/fullchain.pem'),
+    ca: fs.readFileSync(process.env.SSL_PDT_CA || '/etc/letsencrypt/live/picturesentence.com/chain.pem'),
+    requestCert: true,
+    rejectUnauthorized: false
+}, app);
 var io = new Server(server, {
     methods: ["GET", "POST"]
 });
@@ -189,7 +196,7 @@ io.on('connection', function (socket) {
             var payload_1 = { status: "kick", msg: "Kicked from room by host", code: -1 };
             var lobby = LOBBY.get(client.room);
             lobby === null || lobby === void 0 ? void 0 : lobby.forEach(function (a) {
-                if (a.id == client.kick) {
+                if (a.socket == client.kick) {
                     socket.to(a.socket).emit("lobby_poll", payload_1);
                     return;
                 }
