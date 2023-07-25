@@ -138,7 +138,7 @@ const playerJoin = (socket: typeof Socket, room: string, user: string, serverRep
 
 const playerLeave = (socket: typeof Socket, key: string, id: number, user: string) => {
 
-  if (id === 0) {
+  if (id === 0) {   // host left; close lobby
     SETTINGS.delete(key);
     GAME.delete(key);
     LOBBY.delete(key);
@@ -169,46 +169,14 @@ const playerLeave = (socket: typeof Socket, key: string, id: number, user: strin
 const playerExit = (socket: typeof Socket) => {
 
   const lobbies = LOBBY.entries();
-  let found = false;
-  let key: string = ``;
-  let actors: Actor[] = [];
-  let a: Actor;
-
-  for (let room of lobbies) {
-    if (found) break;
-
-    room[1] = room[1].filter((actor) => {
-      if (actor.socket === socket.id) {
-        found = true;
-        key = room[0];
-        actors = room[1];
-        a = actor;
-        
-        let papers = GAME.get(room[0]);
-        papers = papers?.filter((p) => { return p.id !== actor.id; });
-        if (papers) GAME.set(room[0], papers);
+  Array.from(lobbies).forEach((lobby) => {
+    lobby[1].forEach((actor) => {
+      if (actor.socket == socket.id) {
+        playerLeave(socket, lobby[0], actor.id, actor.user);
+        return;
       }
-      return actor.socket !== socket.id;
     });
-    LOBBY.set(room[0], room[1]);
-  }
-
-  if (found && LOBBY.get(key)!.length > 0 && a!.id != 0) {
-
-    const node = { room: key, msg: `${a!.user} has left the room`, author: ``, code: 0 };
-    notifyLobby(socket, node);
-
-  } else {
-    
-    SETTINGS.delete(key);
-    GAME.delete(key);
-    LOBBY.delete(key);
-    
-    const node = { room: key, msg: `Lobby closed by host`, author: `server`, code: -1 };
-    notifyLobby(socket, node);
-  }
-
-  socket.leave(key);
+  });
 
 }
 
