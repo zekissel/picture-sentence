@@ -21,8 +21,7 @@ var options = {
     key: fs.readFileSync(process.env.SSL_PDT_KEY || '/etc/nginx/ssl/privkey.pem'),
     cert: fs.readFileSync(process.env.SSL_PDT_CRT || '/etc/nginx/ssl/fullchain.pem'),
     ca: fs.readFileSync(process.env.SSL_PDT_CA || '/etc/nginx/ssl/chain.pem'),
-    requestCert: true,
-    rejectUnauthorized: false
+    requestCert: true
 };
 var app = express(); //app.use(cors());
 var secureServer = https.createServer(options, app);
