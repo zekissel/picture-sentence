@@ -136,6 +136,36 @@ const playerJoin = (socket: typeof Socket, room: string, user: string, serverRep
 
 }
 
+const playerLeave = (socket: typeof Socket, key: string, id: number, user: string) => {
+
+  if (id === 0) {
+    SETTINGS.delete(key);
+    GAME.delete(key);
+    LOBBY.delete(key);
+    
+    const node = { room: key, msg: `Lobby closed by host`, author: `server`, code: -1 };
+    notifyLobby(socket, node);
+    socket.leave(key);
+
+    return;
+  }
+
+  let actors = LOBBY.get(key);
+  actors = actors?.filter((a) => {
+    return a.id !== id;
+  }); 
+  if (actors) LOBBY.set(key, actors);
+  let papers = GAME.get(key);
+  papers = papers?.filter((p) => {
+    return p.id !== id;
+  });
+  if (papers) GAME.set(key, papers);
+
+  const node = { room: key, msg: `${user} has left the room`, author: ``, code: 0 };
+  notifyLobby(socket, node);
+  socket.leave(key);
+}
+
 const playerExit = (socket: typeof Socket) => {
 
   const lobbies = LOBBY.entries();
@@ -279,9 +309,9 @@ io.on('connection', (socket: typeof Socket) => {
   })
 
   /* EXIT ROOM */
-  socket.on('exit_room', (client: InboundMenu) => {
+  socket.on('exit_room', (client: InboundLobby) => {
     
-    playerExit(socket);
+    playerLeave(socket, client.room, client.id, client.user);
     console.log(`User ${socket.id} exited room ${client.room}`);
 
   });
