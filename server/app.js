@@ -15,7 +15,7 @@ var https = require("https");
 var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
 /* --------------- SERVER STATICS */
 //const CLIENT_PORT = 5173;
-var SOCKET_PORT = 5174;
+var SOCKET_PORT = 443;
 var options = {
     key: fs.readFileSync(process.env.SSL_PDT_KEY || '/etc/letsencrypt/live/picturesentence.com/privkey.pem'),
     cert: fs.readFileSync(process.env.SSL_PDT_CRT || '/etc/letsencrypt/live/picturesentence.com/fullchain.pem'),
