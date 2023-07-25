@@ -8,15 +8,25 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 var express = require("express");
+var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
+/* DEVELOPMENT /
+const http = require('http');
+const cors = require("cors");
+/**/
+/* PRODUCTION */
 var path = require("path");
 var fs = require("fs");
 var https = require("https");
-//const http = require('http');
-//const cors = require("cors");
-var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
+/**/
 /* --------------- SERVER STATICS */
 //const CLIENT_PORT = 5173;
 var SOCKET_PORT = 7000;
+var app = express();
+/* DEVELOPMENT /
+app.use(cors());
+const standardServer = http.createServer(app);
+/**/
+/* PRODUCTION */
 var options = {
     key: fs.readFileSync(process.env.SSL_PDT_KEY || '/etc/nginx/ssl/privkey.pem'),
     cert: fs.readFileSync(process.env.SSL_PDT_CRT || '/etc/nginx/ssl/fullchain.pem'),
@@ -24,17 +34,17 @@ var options = {
     requestCert: true,
     rejectUnauthorized: false
 };
-var app = express(); //app.use(cors());
 var secureServer = https.createServer(options, app);
-var io = new Server(secureServer, {
-    methods: ["GET", "POST"]
-});
 app.use(express.static(path.join(__dirname + '/dist')));
 app.get("/*", function (req, res) {
     res.sendFile(path.join(__dirname + '/dist/index.html'), function (err) {
         if (err)
             res.status(500).send(err);
     });
+});
+/**/
+var io = new Server(secureServer, {
+    methods: ["GET", "POST"]
 });
 /* --------------- GAME VARIABLES */
 var SETTINGS = new Map();
@@ -81,6 +91,32 @@ var playerJoin = function (socket, room, user, serverReply) {
     /* refresh entire lobby after player joins */
     var node = { room: room, author: "", msg: "".concat(user, " has joined the room"), code: 1 };
     notifyLobby(socket, node);
+};
+var playerLeave = function (socket, key, id, user) {
+    if (id === 0) {
+        SETTINGS["delete"](key);
+        GAME["delete"](key);
+        LOBBY["delete"](key);
+        var node_1 = { room: key, msg: "Lobby closed by host", author: "server", code: -1 };
+        notifyLobby(socket, node_1);
+        socket.leave(key);
+        return;
+    }
+    var actors = LOBBY.get(key);
+    actors = actors === null || actors === void 0 ? void 0 : actors.filter(function (a) {
+        return a.id !== id;
+    });
+    if (actors)
+        LOBBY.set(key, actors);
+    var papers = GAME.get(key);
+    papers = papers === null || papers === void 0 ? void 0 : papers.filter(function (p) {
+        return p.id !== id;
+    });
+    if (papers)
+        GAME.set(key, papers);
+    var node = { room: key, msg: "".concat(user, " has left the room"), author: "", code: 0 };
+    notifyLobby(socket, node);
+    socket.leave(key);
 };
 var playerExit = function (socket) {
     var lobbies = LOBBY.entries();
@@ -207,7 +243,7 @@ io.on('connection', function (socket) {
     });
     /* EXIT ROOM */
     socket.on('exit_room', function (client) {
-        playerExit(socket);
+        playerLeave(socket, client.room, client.id, client.user);
         console.log("User ".concat(socket.id, " exited room ").concat(client.room));
     });
     /* ready up players and send messages */
