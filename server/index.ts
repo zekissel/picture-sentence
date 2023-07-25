@@ -1,19 +1,61 @@
 const express = require("express");
-const http = require("http");
-const cors = require("cors");
 const { Server, Socket } = require("socket.io");
 
+/* DEVELOPMENT */
+const http = require('http');
+const cors = require("cors");
+/**/
+
+/* PRODUCTION /
+const path = require("path");
+const fs = require("fs");
+const https = require("https");
+/**/
+
 /* --------------- SERVER STATICS */
-const app = express(); app.use(cors());
-const server = http.createServer(app);
 const CLIENT_PORT = 5173;
-const SOCKET_PORT = 5174;
-const io = new Server(server, {
+const SOCKET_PORT = 7000;
+
+const app = express();
+
+/* DEVELOPMENT */
+app.use(cors());
+const standardServer = http.createServer(app);
+/**/
+
+/* PRODUCTION /
+const options = {
+  key: fs.readFileSync(process.env.SSL_PDT_KEY || '/etc/nginx/ssl/privkey.pem'),
+  cert: fs.readFileSync(process.env.SSL_PDT_CRT || '/etc/nginx/ssl/fullchain.pem'),
+  ca: fs.readFileSync(process.env.SSL_PDT_CA || '/etc/nginx/ssl/chain.pem'),
+  requestCert: true,
+  rejectUnauthorized: false,
+};
+const secureServer = https.createServer(options, app);
+
+app.use(express.static( path.join(__dirname + '/dist') ))
+app.get("/*", function (req: any, res: any) {
+  res.sendFile(
+    path.join(__dirname + '/dist/index.html'),
+    function (err: any) {
+      if (err) res.status(500).send(err);
+    }
+  )
+});
+/**/
+
+
+const io = new Server(standardServer, {
+  //methods: ["GET", "POST"],
+  
+  /* */
   cors: {
     origin: `http://localhost:${CLIENT_PORT}`,
     methods: ["GET", "POST"],
-  },
+  },/**/
 });
+
+
 
 /* --------------- TYPE ANNOTATIONS */
 type Key = string;
@@ -155,6 +197,7 @@ const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) =
 }
 
 
+
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', (socket: typeof Socket) => {
   console.log(`User Connected: ${socket.id}`);
@@ -218,7 +261,7 @@ io.on('connection', (socket: typeof Socket) => {
 
   });
 
-  interface InboundHost { room: string; id: number; kick: number; code: number; }
+  interface InboundHost { room: string; id: number; kick: string; code: number; }
   socket.on(`signal_adm`, (client: InboundHost) => {
 
     if (client.code < 0) {
@@ -226,7 +269,7 @@ io.on('connection', (socket: typeof Socket) => {
       const payload = { status: `kick`, msg: `Kicked from room by host`, code: -1 };
       const lobby = LOBBY.get(client.room);
       lobby?.forEach((a) => {
-        if (a.id == client.kick) {
+        if (a.socket == client.kick) {
           socket.to(a.socket).emit(`lobby_poll`, payload);
           return;
         }
@@ -338,6 +381,8 @@ io.on('connection', (socket: typeof Socket) => {
 
 });
 
-server.listen(SOCKET_PORT, () => {
+
+
+standardServer.listen(SOCKET_PORT, () => {
   console.log(`SERVER RUNNING ON PORT: ${SOCKET_PORT}`);
 });

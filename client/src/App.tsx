@@ -3,7 +3,8 @@ import io from "socket.io-client";
 import { useState } from "react";
 import Lobby from "./Lobby";
 
-const socket = io("http://localhost:5174");
+const socket = io("http://localhost:7000");
+//const socket = io();
 
 interface MenuResponse { status: string; msg: string; code: number; }
 
