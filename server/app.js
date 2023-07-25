@@ -11,6 +11,7 @@ var express = require("express");
 var path = require("path");
 var fs = require("fs");
 var https = require("https");
+//const http = require('http');
 //const cors = require("cors");
 var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
 /* --------------- SERVER STATICS */
@@ -19,10 +20,12 @@ var SOCKET_PORT = 7000;
 var options = {
     key: fs.readFileSync(process.env.SSL_PDT_KEY || path.join(__dirname, 'ssl/privkey.pem')),
     cert: fs.readFileSync(process.env.SSL_PDT_CRT || path.join(__dirname, 'ssl/fullchain.pem')),
-    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, 'ssl/chain.pem'))
+    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, 'ssl/chain.pem')),
+    requestCert: true,
+    rejectUnauthorized: false
 };
 var app = express(); //app.use(cors());
-var server = https.createServer(options);
+var server = https.createServer(options, app);
 var io = new Server(server, {
     methods: ["GET", "POST"]
 });
