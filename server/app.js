@@ -17,9 +17,9 @@ var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
 //const CLIENT_PORT = 5173;
 var SOCKET_PORT = 7000;
 var options = {
-    key: fs.readFileSync(process.env.SSL_PDT_KEY || '/etc/letsencrypt/live/picturesentence.com/privkey.pem'),
-    cert: fs.readFileSync(process.env.SSL_PDT_CRT || '/etc/letsencrypt/live/picturesentence.com/fullchain.pem'),
-    ca: fs.readFileSync(process.env.SSL_PDT_CA || '/etc/letsencrypt/live/picturesentence.com/chain.pem'),
+    key: fs.readFileSync(process.env.SSL_PDT_KEY || path.join(__dirname, 'ssl/privkey.pem')),
+    cert: fs.readFileSync(process.env.SSL_PDT_CRT || path.join(__dirname, 'ssl/fullchain.pem')),
+    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, 'ssl/chain.pem')),
     requestCert: true,
     rejectUnauthorized: false
 };
