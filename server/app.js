@@ -19,9 +19,7 @@ var SOCKET_PORT = 7000;
 var options = {
     key: fs.readFileSync(process.env.SSL_PDT_KEY || path.join(__dirname, 'ssl/privkey.pem')),
     cert: fs.readFileSync(process.env.SSL_PDT_CRT || path.join(__dirname, 'ssl/fullchain.pem')),
-    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, 'ssl/chain.pem')),
-    requestCert: true,
-    rejectUnauthorized: false
+    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, 'ssl/chain.pem'))
 };
 var app = express(); //app.use(cors());
 var server = https.createServer(options);
