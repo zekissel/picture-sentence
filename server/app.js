@@ -18,15 +18,15 @@ var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
 //const CLIENT_PORT = 5173;
 var SOCKET_PORT = 7000;
 var options = {
-    key: fs.readFileSync(process.env.SSL_PDT_KEY || path.join(__dirname, 'ssl/privkey.pem')),
-    cert: fs.readFileSync(process.env.SSL_PDT_CRT || path.join(__dirname, 'ssl/fullchain.pem')),
-    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, 'ssl/chain.pem')),
+    key: fs.readFileSync(process.env.SSL_PDT_KEY || path.join(__dirname, '/etc/nginx/ssl/privkey.pem')),
+    cert: fs.readFileSync(process.env.SSL_PDT_CRT || path.join(__dirname, '/etc/nginx/ssl/fullchain.pem')),
+    ca: fs.readFileSync(process.env.SSL_PDT_CA || path.join(__dirname, '/etc/nginx/ssl/chain.pem')),
     requestCert: true,
     rejectUnauthorized: false
 };
 var app = express(); //app.use(cors());
-var server = https.createServer(options, app);
-var io = new Server(server, {
+var secureServer = https.createServer(options, app);
+var io = new Server(secureServer, {
     methods: ["GET", "POST"]
 });
 app.use(express.static(path.join(__dirname + '/dist')));
@@ -283,6 +283,6 @@ io.on('connection', function (socket) {
         console.log("User disconnected: ".concat(socket.id));
     });
 });
-server.listen(SOCKET_PORT, function () {
+secureServer.listen(SOCKET_PORT, function () {
     console.log("SERVER RUNNING ON PORT: ".concat(SOCKET_PORT));
 });
