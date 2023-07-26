@@ -98,8 +98,8 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
 
   }, [socket]);
 
-  const regCol = {background: `#545652`};
-  const altCol = {background: `#445652`};
+  const regCol = { background: `#545652` };
+  const altCol = { background: `#445652` };
 
   const green = { color: `green` };
   const red = { color: `red` };

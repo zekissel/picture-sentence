@@ -315,11 +315,8 @@ io.on('connection', (socket: typeof Socket) => {
   socket.on('signal_game', (client: InboundGame, serverReply: Callback) => {
 
     const papers: Paper[] = GAME.get(client.room) ?? [];
-    if (client.round === 1) {
-
-      papers[client.id] = { id: client.id, answers: [client.msg] };
-      
-    } else {
+    if (client.round === 1) papers[client.id] = { id: client.id, answers: [client.msg] };
+    else {
 
       let append_ans = papers[client.id].answers;
       append_ans = [...append_ans, client.msg];

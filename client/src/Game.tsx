@@ -14,7 +14,7 @@ interface Paper {
   answers: string[];
 }
 
-interface PaperProps {
+interface PostProps {
   paper: Paper;
 }
 
@@ -30,7 +30,7 @@ interface GameProps {
 interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
 
 
-function FoldPaper ({ paper }: PaperProps) {
+function PostGame ({ paper }: PostProps) {
 
   const [visible, setVisible] = useState(false);
   const toggleVisible = () => { setVisible(!visible); }
@@ -111,7 +111,7 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
 
       { round === -1 &&
         allPapers.map((val, ind) => {
-          return <FoldPaper key={ind} paper={val} />
+          return <PostGame key={ind} paper={val} />
         })
       }
     </>
