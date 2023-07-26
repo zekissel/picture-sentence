@@ -19,7 +19,7 @@ var fs = require("fs");
 var https = require("https");
 /**/
 /* --------------- SERVER STATICS */
-//const CLIENT_PORT = 5173;
+var CLIENT_PORT = 5173;
 var SOCKET_PORT = 7000;
 var app = express();
 /* DEVELOPMENT /
@@ -93,7 +93,7 @@ var playerJoin = function (socket, room, user, serverReply) {
     notifyLobby(socket, node);
 };
 var playerLeave = function (socket, key, id, user) {
-    if (id === 0) {
+    if (id === 0) { // host left; close lobby
         SETTINGS["delete"](key);
         GAME["delete"](key);
         LOBBY["delete"](key);
@@ -120,46 +120,14 @@ var playerLeave = function (socket, key, id, user) {
 };
 var playerExit = function (socket) {
     var lobbies = LOBBY.entries();
-    var found = false;
-    var key = "";
-    var actors = [];
-    var a;
-    var _loop_1 = function (room) {
-        if (found)
-            return "break";
-        room[1] = room[1].filter(function (actor) {
-            if (actor.socket === socket.id) {
-                found = true;
-                key = room[0];
-                actors = room[1];
-                a = actor;
-                var papers = GAME.get(room[0]);
-                papers = papers === null || papers === void 0 ? void 0 : papers.filter(function (p) { return p.id !== actor.id; });
-                if (papers)
-                    GAME.set(room[0], papers);
+    Array.from(lobbies).forEach(function (lobby) {
+        lobby[1].forEach(function (actor) {
+            if (actor.socket == socket.id) {
+                playerLeave(socket, lobby[0], actor.id, actor.user);
+                return;
             }
-            return actor.socket !== socket.id;
         });
-        LOBBY.set(room[0], room[1]);
-    };
-    for (var _i = 0, lobbies_1 = lobbies; _i < lobbies_1.length; _i++) {
-        var room = lobbies_1[_i];
-        var state_1 = _loop_1(room);
-        if (state_1 === "break")
-            break;
-    }
-    if (found && LOBBY.get(key).length > 0 && a.id != 0) {
-        var node = { room: key, msg: "".concat(a.user, " has left the room"), author: "", code: 0 };
-        notifyLobby(socket, node);
-    }
-    else {
-        SETTINGS["delete"](key);
-        GAME["delete"](key);
-        LOBBY["delete"](key);
-        var node = { room: key, msg: "Lobby closed by host", author: "server", code: -1 };
-        notifyLobby(socket, node);
-    }
-    socket.leave(key);
+    });
 };
 var determineStart = function (socket, room, actors) {
     var ready = true;
@@ -272,9 +240,8 @@ io.on('connection', function (socket) {
     socket.on('signal_game', function (client, serverReply) {
         var _a;
         var papers = (_a = GAME.get(client.room)) !== null && _a !== void 0 ? _a : [];
-        if (client.round === 1) {
+        if (client.round === 1)
             papers[client.id] = { id: client.id, answers: [client.msg] };
-        }
         else {
             var append_ans = papers[client.id].answers;
             append_ans = __spreadArray(__spreadArray([], append_ans, true), [client.msg], false);
