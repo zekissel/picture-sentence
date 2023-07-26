@@ -21,11 +21,14 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
     const [color, setColor] = useState<Color>('#000000');
     const updateColor = (e: any) => { setColor(e.hex); }
 
+    const [size, setSize] = useState(4);
+    const updateSize = (e: any) => { setSize(e.target.value) }
+
     const undoLine = () => {  }
 
 
     function onDraw(ctx: CanvasRenderingContext2D | null, point: Point | null, prevPoint: Point | null) {
-        drawLine(prevPoint, point, ctx, color, 4);
+        drawLine(prevPoint, point, ctx, color, size);
     }
 
     function exportImage () {
@@ -45,27 +48,32 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(start.x, start.y, 2, 0, 2 * Math.PI);
+        ctx.arc(start.x, start.y, Math.sqrt(width), 0, 2 * Math.PI);
         ctx.fill();
     }
 
     return(
         <div>
             <button onClick={undoLine}>Undo</button>
-            <canvas id='image'
-                width={width}
-                height={height}
-                onMouseDown={onCanvasMouseDown}
-                onTouchStart={onCanvasMouseDown}
-                onMouseUp={exportImage}
-                onTouchEnd={exportImage}
-                style={canvasStyle}
-                ref={setCanvasRef}
-            />
-            <button onClick={updateVisible}>{ visible ? `Hide` : `Show` } Colors</button>
+            <div className='canvaswrap'>
+                <canvas id='image'
+                    width={width}
+                    height={height}
+                    onMouseDown={onCanvasMouseDown}
+                    onTouchStart={onCanvasMouseDown}
+                    onMouseUp={exportImage}
+                    onTouchEnd={exportImage}
+                    style={canvasStyle}
+                    ref={setCanvasRef}
+                />
+            </div>
+            <button onClick={updateVisible}>{ visible ? `Hide` : `Show` } Tools</button>
             
+            { visible && 
+                <label htmlFor='size'>Size: { size }<input id='size' type='range' onChange={updateSize} min={1} max={20} step={1} value={size}/></label>
+            }
+
             { visible && <SketchPicker color={color} onChangeComplete={updateColor} /> }
-            
 
         </div>
     );

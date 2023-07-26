@@ -6,6 +6,7 @@ import Lobby from "./Lobby";
 const socket = io("http://localhost:7000");
 //const socket = io();
 
+/*
 window.addEventListener('touchmove', ev => {
   if (
     (ev.target as HTMLElement)!.nodeName !== 'CANVAS'
@@ -25,6 +26,7 @@ window.addEventListener('touchstart', ev => {
     ev.stopImmediatePropagation();
   };
 }, { passive: false });
+*/
 
 interface MenuResponse { status: string; msg: string; code: number; }
 

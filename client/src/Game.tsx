@@ -102,7 +102,7 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
 
         { (!idle && round > -1) && (round % 2 === 1 ? 
           <input type='text' placeholder='Your sentence here' onChange={updateAnswer} value={curAnswer} onKeyDown={enterSubmit}/> :
-          <div className='canvaswrap'><Canvas width={400} height={267} updateImage={updateImage} /></div>)
+          <Canvas width={400} height={267} updateImage={updateImage} />)
         }
         {
           (idle && round >= 0) && <p>Wait for next round</p>
