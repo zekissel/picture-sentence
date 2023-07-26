@@ -6,6 +6,26 @@ import Lobby from "./Lobby";
 const socket = io("http://localhost:7000");
 //const socket = io();
 
+window.addEventListener('touchmove', ev => {
+  if (
+    (ev.target as HTMLElement)!.nodeName !== 'CANVAS'
+  ) {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+  };
+}, { passive: false });
+
+window.addEventListener('touchstart', ev => {
+  if (
+    (ev.target as HTMLElement)!.nodeName !== 'CANVAS' &&
+    (ev.target as HTMLElement)!.nodeName !== 'INPUT' &&
+    (ev.target as HTMLElement)!.nodeName !== 'BUTTON'
+  ) {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+  };
+}, { passive: false });
+
 interface MenuResponse { status: string; msg: string; code: number; }
 
 interface ClientProps {
@@ -59,6 +79,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   return (
     <menu className="join">
       <li><button onClick={def}>Back</button></li>
+      <br/>
 
       <fieldset>
         <legend>Connect</legend>
@@ -117,6 +138,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
   return (
     <menu className="host">
       <li><button onClick={def}>Back</button></li>
+      <br/>
 
       <fieldset>
         <legend>User</legend>
@@ -183,8 +205,8 @@ export default function App() {
 
         { toggleMenu === MenuMode.Default && 
           <menu>
-            <li><button onClick={host}>Host Game</button></li>
-            <li><button onClick={join}>Join Game</button></li>
+            <li><button className='menu' onClick={host}>Host Game</button></li>
+            <li><button className='menu' onClick={join}>Join Game</button></li>
           </menu>
         }
         { toggleMenu === MenuMode.Host &&
