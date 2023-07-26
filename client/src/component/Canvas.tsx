@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react';
-import { useOnDraw } from './_drawUtils';
+import { useOnDraw } from '../lib/_drawUtils';
 import { SketchPicker } from 'react-color';
 
 interface Point { x: number; y: number; }
