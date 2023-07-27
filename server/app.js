@@ -47,9 +47,10 @@ var io = new Server(secureServer, {
     methods: ["GET", "POST"]
 });
 /* --------------- GAME VARIABLES */
-var SETTINGS = new Map();
-var LOBBY = new Map();
-var GAME = new Map();
+var SETTINGS = new Map(); /* created by host, persistent until host leaves */
+var LOBBY = new Map(); /* "              ,   ", tracks players */
+var GAME = new Map(); /* created after pregame, destroyed before postgame, tracks answers */
+var POST = new Map(); /* active for post game, tracks likes for answers */
 /* --------------- HELPER FUNCTIONS */
 var isActive = function (room) {
     var active = GAME.get(room);
@@ -59,6 +60,7 @@ var createRoom = function (room, settings) {
     SETTINGS.set(room, settings);
     LOBBY.set(room, []);
     GAME["delete"](room);
+    POST["delete"](room);
 };
 var notifyLobby = function (socket, node) {
     var _a;
@@ -277,8 +279,24 @@ io.on('connection', function (socket) {
             var gameLoad_2 = { ready: false, msg: papers, code: -1, actors: actors };
             socket.to(client.room).emit('game_poll', gameLoad_2);
             socket.emit('game_poll', gameLoad_2);
+            var votes = new Array(papers.length).fill(new Array(papers[0].answers.length).fill(0));
+            POST.set(client.room, votes);
             GAME["delete"](client.room);
         }
+    });
+    socket.on('signal_post', function (client) {
+        var votes = POST.get(client.room);
+        if (!votes)
+            return;
+        if (client.val) {
+            votes[client.paper][client.ind] += 1;
+        }
+        else {
+            votes[client.paper][client.ind] -= 1;
+        }
+        POST.set(client.room, votes);
+        var postLoad = { paper: client.paper, votes: votes[client.paper] };
+        socket.to(client.room).emit('post_poll', postLoad);
     });
     // CLOSE CONNECTION FROM CLIENT TO SERVER */
     socket.on('disconnect', function () {
