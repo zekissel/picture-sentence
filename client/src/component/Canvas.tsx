@@ -13,7 +13,7 @@ interface CanvasProps {
 
 const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
-    const { setCanvasRef, onCanvasMouseDown, getImage } = useOnDraw(onDraw);
+    const { setCanvasRef, onCanvasMouseDown, getImage, clearCanvas, undoLine, writeLine } = useOnDraw(onDraw);
 
     const [visible, setVisible] = useState(false);
     const updateVisible = () => { setVisible(!visible); }
@@ -24,8 +24,6 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
     const [size, setSize] = useState(4);
     const updateSize = (e: any) => { setSize(e.target.value) }
 
-    const undoLine = () => {  }
-
 
     function onDraw(ctx: CanvasRenderingContext2D | null, point: Point | null, prevPoint: Point | null) {
         drawLine(prevPoint, point, ctx, color, size);
@@ -33,6 +31,17 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     function exportImage () {
         updateImage(getImage());
+        writeLine();
+    }
+
+    function undo () {
+        const prev = undoLine();
+        updateImage(prev ?? ``);
+    }
+
+    function clear () {
+        clearCanvas();
+        updateImage(``);
     }
 
     function drawLine(start: Point | null, end: Point | null, ctx: CanvasRenderingContext2D | null, color: Color, width: number) {
@@ -54,7 +63,8 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     return(
         <div>
-            <button onClick={undoLine}>Undo</button>
+            <button onClick={undo}>Undo</button>
+            <button onClick={clear}>Clear</button>
             <div className='canvaswrap'>
                 <canvas id='image'
                     width={width}

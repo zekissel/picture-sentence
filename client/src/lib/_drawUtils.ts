@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Point { x: number; y: number; }
 
@@ -15,6 +15,8 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
     const touchMoveListenerRef = useRef<((e: TouchEvent) => void) | null>(null);
     const touchEndListenerRef = useRef<(() => void) | null>(null);
 
+    const [lines, setLines] = useState<string[]>([]);
+
     function setCanvasRef(ref: HTMLCanvasElement) {
         canvasRef.current = ref;
     }
@@ -27,6 +29,39 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
         if (canvasRef.current) return canvasRef.current.toDataURL();
         else return `Err`;
     }
+
+    function setImage (img: CanvasImageSource) {
+        if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx?.drawImage(img, 0, 0);
+        }
+    }
+
+    function writeLine () {
+        if (canvasRef.current) setLines([...lines, canvasRef.current.toDataURL()]);
+    }
+
+    function undoLine () {
+        clearCanvas();
+        if (lines.length > 1) {
+            lines.pop();
+            const last = lines.pop()!;
+            const pic = new Image(); pic.src = last;
+            pic.onload = () => setImage(pic);
+            setLines([...lines, last]);
+            return last;
+        }
+    }
+
+    function clearCanvas () {
+        if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx?.setTransform(1, 0, 0, 1, 0, 0);
+            ctx?.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            setLines([]);
+        }
+    }
+
 
     useEffect(() => {
         function computePointInCanvas(clientX: number, clientY: number) {
@@ -98,5 +133,5 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
 
     }, [onDraw]);
 
-    return { setCanvasRef, onCanvasMouseDown, getImage }
+    return { setCanvasRef, onCanvasMouseDown, getImage, clearCanvas, undoLine, writeLine }
 };

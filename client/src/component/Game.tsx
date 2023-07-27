@@ -33,6 +33,7 @@ function Paper ({ socket, room, index, answers }: PaperProps) {
 
   const [votes, setVotes] = useState<number[]>(new Array(answers.length).fill(0));
   const [myVotes, setMyVotes] = useState<boolean[]>(new Array(answers.length).fill(false));
+  
   const castVote = (e: any) => {
     const ind = Number(e.target.id);
     const vote = !myVotes[ind];
