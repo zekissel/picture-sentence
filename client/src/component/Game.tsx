@@ -103,10 +103,8 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
     if (curAnswer !== ``) {
       const payload = { room: room, id: id, msg: curAnswer, round: round };
       socket.emit("signal_game", payload, (res: GameResponse) => {
-        if (res.msg?.length > 0) setPrevious(res.msg[id].answers[round - 1]);
         if (res.actors !== undefined) setActors(res.actors);
         if (res.ready !== undefined) setIdle(res.ready);
-        setRound(res.code);
       });
       setCurrent(``);
     }
@@ -114,11 +112,14 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
 
   useEffect(() => {
     socket.on("game_poll", (inbound: any) => {
-      if (inbound.code < 0) { setAll(inbound.msg); setPrevious(``); }
-      else if (inbound.ready === false) setPrevious(inbound.msg[id].answers[round]);
-      
-      if (inbound.ready !== undefined) setIdle(inbound.ready);
-      if (inbound.actors !== undefined) setActors(inbound.actors);
+      if (inbound.code >= 0) {
+        if (inbound.msg?.length > 0) setPrevious(inbound.msg[id].answers[inbound.code - 2]);
+        if (inbound.ready !== undefined) setIdle(inbound.ready);
+        if (inbound.actors !== undefined) setActors(inbound.actors);
+        
+      } else {
+        setAll(inbound.msg); setPrevious(``);
+      }
       setRound(inbound.code);
     });
   }, [socket]);
@@ -162,6 +163,7 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
       <>
         <h2>Postgame Lobby</h2>
         <p>What's your favorite story?</p>
+        <i>(Click on the first sentence to reveal the whole page)</i>
         
         <PostGame socket={socket} room={room} papers={allPapers} />
         

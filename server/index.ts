@@ -70,6 +70,7 @@ interface Paper {
   answers: string[];
 }
 
+
 interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
 interface LobbyResponse { status: string; msg: string; author: string; actors: Actor[], code: number }
 interface MenuResponse { status: string; msg: string; code: number; }
