@@ -23,6 +23,7 @@ interface GameProps {
   setActors: React.Dispatch<React.SetStateAction<Actor[]>>;
 }
 
+interface PostResponse { paper: number; ind: number; votes: number }
 interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
 
 function Paper ({ socket, room, index, answers }: PaperProps) {
@@ -35,22 +36,23 @@ function Paper ({ socket, room, index, answers }: PaperProps) {
   const castVote = (e: any) => {
     const ind = Number(e.target.id);
     const vote = !myVotes[ind];
-    const myV = [...myVotes]; myV[ind] = vote;
+    const myV = myVotes.map((b, i) => i === ind ? !b : b);
     setMyVotes(myV);
 
-    const v = [...votes];
-    if (vote) v[ind] += 1;
-    else v[ind] -= 1;
-    setVotes(v);
-
     const postLoad = { room: room, paper: index, ind: ind, val: vote }
-    socket.emit('signal_post', postLoad);
+    socket.emit('signal_post', postLoad, (res: PostResponse) => {
+      const v: number[] = votes.map((n, i) => i === res.ind ? res.votes : n);
+      setVotes(v);
+    });
   }
 
   useEffect(() => {
 
     socket.on('post_poll', (inbound: any) => {
-      if (inbound.paper === index) setVotes(inbound.votes);
+      if (inbound.paper === index) {
+        const v: number[] = votes.map((n, i) => i === inbound.ind ? inbound.votes : n);
+        setVotes(v);
+      }
     });
   }, [socket]);
 
@@ -80,8 +82,8 @@ function PostGame ({ socket, room, papers }: PostProps) {
 
   return (
     <ul>
-      { papers.map((paper, index) => {
-        return <Paper key={index} socket={socket} room={room} index={index} answers={paper.answers} />
+      { papers.map((paper, ind) => {
+        return <Paper key={ind} socket={socket} room={room} index={paper.id} answers={paper.answers} />
       }) }
     </ul>
   )
@@ -116,7 +118,7 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
         if (inbound.msg?.length > 0) setPrevious(inbound.msg[id].answers[inbound.code - 2]);
         if (inbound.ready !== undefined) setIdle(inbound.ready);
         if (inbound.actors !== undefined) setActors(inbound.actors);
-        
+
       } else {
         setAll(inbound.msg); setPrevious(``);
       }

@@ -71,10 +71,11 @@ interface Paper {
 }
 
 
+interface PostResponse { paper: number; ind: number; votes: number }
 interface GameResponse { ready: boolean; msg: Paper[]; code: number, actors: Actor[] }
 interface LobbyResponse { status: string; msg: string; author: string; actors: Actor[], code: number }
 interface MenuResponse { status: string; msg: string; code: number; }
-type Callback = (r: MenuResponse | LobbyResponse | GameResponse) => void;
+type Callback = (r: MenuResponse | LobbyResponse | GameResponse | PostResponse) => void;
 
 interface RoomSettings { max: number, pass: string, chat: boolean, rounds: number }
 interface InboundMenu { room: string; user: string; settings: RoomSettings | undefined; pass: string | undefined }
@@ -146,6 +147,7 @@ const playerLeave = (socket: typeof Socket, key: string, id: number, user: strin
     SETTINGS.delete(key);
     GAME.delete(key);
     LOBBY.delete(key);
+    POST.delete(key);
     
     const node = { room: key, msg: `Lobby closed by host`, author: `server`, code: -1 };
     notifyLobby(socket, node);
@@ -192,6 +194,7 @@ const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) =
     actors.forEach((v) => { v.ready = false; });
     LOBBY.set(room, actors);
     GAME.set(room, []);
+    POST.delete(room);
 
     const node = { room: room, msg: ``, author: `server`, code: 2 };
     notifyLobby(socket, node);
@@ -319,13 +322,11 @@ io.on('connection', (socket: typeof Socket) => {
   socket.on('signal_game', (client: InboundGame, serverReply: Callback) => {
 
     const papers: Paper[] = GAME.get(client.room) ?? [];
+
     if (client.round === 1) papers[client.id] = { id: client.id, answers: [client.msg] };
     else {
-
-      let append_ans = papers[client.id].answers;
-      append_ans = [...append_ans, client.msg];
-      papers[client.id] = { id: client.id, answers: append_ans };
-      
+      const append_ans = [...papers[client.id].answers, client.msg];
+      papers[client.id].answers = append_ans;
     }
     GAME.set(client.room, papers);
 
@@ -356,6 +357,8 @@ io.on('connection', (socket: typeof Socket) => {
 
     } else if (done) {
       /* end game */
+      papers.sort((a, b) => a.id - b.id );
+      GAME.set(client.room, papers);
 
       actors.map((a) => { a.ready = false; return a; });
       LOBBY.set(client.room, actors);
@@ -372,7 +375,7 @@ io.on('connection', (socket: typeof Socket) => {
 
   });
 
-  socket.on('signal_post', (client: InboundPost) => {
+  socket.on('signal_post', (client: InboundPost, serverReply: Callback) => {
     const votes = POST.get(client.room);
     if (!votes) return;
 
@@ -383,7 +386,8 @@ io.on('connection', (socket: typeof Socket) => {
     }
     POST.set(client.room, votes);
 
-    const postLoad = { paper: client.paper, votes: votes[client.paper] };
+    const postLoad = { paper: client.paper, ind: client.ind, votes: votes[client.paper][client.ind] };
+    serverReply(postLoad);
     socket.to(client.room).emit('post_poll', postLoad);
   });
 
