@@ -99,6 +99,7 @@ var playerLeave = function (socket, key, id, user) {
         SETTINGS["delete"](key);
         GAME["delete"](key);
         LOBBY["delete"](key);
+        POST["delete"](key);
         var node_1 = { room: key, msg: "Lobby closed by host", author: "server", code: -1 };
         notifyLobby(socket, node_1);
         socket.leave(key);
@@ -139,6 +140,7 @@ var determineStart = function (socket, room, actors) {
         actors.forEach(function (v) { v.ready = false; });
         LOBBY.set(room, actors);
         GAME.set(room, []);
+        POST["delete"](room);
         var node = { room: room, msg: "", author: "server", code: 2 };
         notifyLobby(socket, node);
     }
@@ -245,9 +247,8 @@ io.on('connection', function (socket) {
         if (client.round === 1)
             papers[client.id] = { id: client.id, answers: [client.msg] };
         else {
-            var append_ans = papers[client.id].answers;
-            append_ans = __spreadArray(__spreadArray([], append_ans, true), [client.msg], false);
-            papers[client.id] = { id: client.id, answers: append_ans };
+            var append_ans = __spreadArray(__spreadArray([], papers[client.id].answers, true), [client.msg], false);
+            papers[client.id].answers = append_ans;
         }
         GAME.set(client.room, papers);
         var done = true;
@@ -274,6 +275,8 @@ io.on('connection', function (socket) {
         }
         else if (done) {
             /* end game */
+            papers.sort(function (a, b) { return a.id - b.id; });
+            GAME.set(client.room, papers);
             actors.map(function (a) { a.ready = false; return a; });
             LOBBY.set(client.room, actors);
             var gameLoad_2 = { ready: false, msg: papers, code: -1, actors: actors };
@@ -284,7 +287,7 @@ io.on('connection', function (socket) {
             GAME["delete"](client.room);
         }
     });
-    socket.on('signal_post', function (client) {
+    socket.on('signal_post', function (client, serverReply) {
         var votes = POST.get(client.room);
         if (!votes)
             return;
@@ -295,7 +298,8 @@ io.on('connection', function (socket) {
             votes[client.paper][client.ind] -= 1;
         }
         POST.set(client.room, votes);
-        var postLoad = { paper: client.paper, votes: votes[client.paper] };
+        var postLoad = { paper: client.paper, ind: client.ind, votes: votes[client.paper][client.ind] };
+        serverReply(postLoad);
         socket.to(client.room).emit('post_poll', postLoad);
     });
     // CLOSE CONNECTION FROM CLIENT TO SERVER */
