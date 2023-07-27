@@ -79,12 +79,14 @@ interface RoomSettings { max: number, pass: string, chat: boolean, rounds: numbe
 interface InboundMenu { room: string; user: string; settings: RoomSettings | undefined; pass: string | undefined }
 interface InboundLobby { room: string; user: string; id: number; ready: boolean; msg: string; }
 interface InboundGame { room: string; id: number; msg: string; round: number; }
+interface InboundPost { room: string, paper: number; ind: number; val: boolean }
 
 /* --------------- GAME VARIABLES */
 
-const SETTINGS = new Map<Key, RoomSettings>();
-const LOBBY = new Map<Key, Actor[]>();
-const GAME = new Map<Key, Paper[]>();
+const SETTINGS = new Map<Key, RoomSettings>(); /* created by host, persistent until host leaves */
+const LOBBY = new Map<Key, Actor[]>();         /* "              ,   ", tracks players */
+const GAME = new Map<Key, Paper[]>();          /* created after pregame, destroyed before postgame, tracks answers */
+const POST = new Map<Key, number[][]>();       /* active for post game, tracks likes for answers */
 
 
 /* --------------- HELPER FUNCTIONS */
@@ -97,6 +99,7 @@ const createRoom = (room: string, settings: RoomSettings) => {
   SETTINGS.set(room, settings);
   LOBBY.set(room, []);
   GAME.delete(room);
+  POST.delete(room);
 }
 
 interface msgNode { room: string, author: string, msg: string, code: number }
@@ -360,9 +363,27 @@ io.on('connection', (socket: typeof Socket) => {
       socket.to(client.room).emit('game_poll', gameLoad);
       socket.emit('game_poll', gameLoad);
 
+      const votes: number[][] = new Array(papers.length).fill(new Array(papers[0].answers.length).fill(0));
+      POST.set(client.room, votes);
+
       GAME.delete(client.room);
     }
 
+  });
+
+  socket.on('signal_post', (client: InboundPost) => {
+    const votes = POST.get(client.room);
+    if (!votes) return;
+
+    if (client.val) {
+      votes[client.paper][client.ind] += 1;
+    } else {
+      votes[client.paper][client.ind] -= 1;
+    }
+    POST.set(client.room, votes);
+
+    const postLoad = { paper: client.paper, votes: votes[client.paper] };
+    socket.to(client.room).emit('post_poll', postLoad);
   });
 
 

@@ -130,7 +130,6 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
                   <label className='check' style={ v.ready ? green : red }>{ v.ready ? '✓' : '✗' }</label>
 
                   { v.id !== id && (id === 0 && <button className='kick' id={v.socket} onClick={kick}>Kick</button>) }
-                  
                 </li> 
               })
             }
@@ -154,7 +153,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
       </div>
 
       <div id='field'>
-        { (gamePhase > 0 || gamePhase === -1) && <Game socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setActors={setActors} /> }
+        <Game socket={socket} room={room} id={id} round={gamePhase} setRound={setPhase} setActors={setActors} />
       </div>
     </>
   );

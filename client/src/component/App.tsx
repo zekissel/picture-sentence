@@ -65,6 +65,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
     if (user === ``) {  setErr(`Enter a nickname that will be visible to other players`); }
   };
 
+  const keyPass = (e: any) => { if (e.key == `Enter`) enterPass(); }
   const enterPass = () => {
     if (pass !== ``) {
       const payload = { room: room, user: user, pass: pass };
@@ -98,7 +99,7 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       { auth &&
         <fieldset>
           <legend>Confirm</legend>
-          <li><input name="password" type="password" placeholder="Enter room password" onChange={(e) => { setPass(e.target.value); }} /></li>
+          <li><input name="password" type="password" placeholder="Enter room password" onKeyDown={keyPass} onChange={(e) => { setPass(e.target.value); }} /></li>
           <li><button onClick={enterPass}>Enter</button></li>
         </fieldset>
       }
