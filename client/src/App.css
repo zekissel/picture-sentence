@@ -63,6 +63,7 @@ ul, menu, li {
 
 .host, .join {
   text-align: center;
+  background-color: rgb(180, 180, 180, .6);
 }
 
 button {
@@ -77,6 +78,20 @@ button {
   button {
     width: 40vw;
     height: 6vh;
+  }
+}
+
+#prev {
+  width: fit-content;
+  max-width: 30vw;
+  padding: .5% 2%;
+  margin: 0 0 2% 5%;
+}
+
+@media screen and (max-width: 650px) {
+  #prev {
+    max-width: 80vw;
+    margin: 0 0 2% 10%;
   }
 }
 
@@ -166,4 +181,9 @@ input {
 .like {
   text-align: right;
   width: fit-content;
+}
+
+.tools {
+  background-color: #888;
+  max-width: fit-content;
 }

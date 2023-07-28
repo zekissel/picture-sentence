@@ -26,7 +26,10 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
     }
 
     function getImage () {
-        if (canvasRef.current) return canvasRef.current.toDataURL();
+        if (canvasRef.current) {
+            setLines([...lines, canvasRef.current.toDataURL()]);
+            return canvasRef.current.toDataURL();
+        }
         else return `Err`;
     }
 
@@ -35,10 +38,6 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
             const ctx = canvasRef.current.getContext('2d');
             ctx?.drawImage(img, 0, 0);
         }
-    }
-
-    function writeLine () {
-        if (canvasRef.current) setLines([...lines, canvasRef.current.toDataURL()]);
     }
 
     function undoLine () {
@@ -133,5 +132,5 @@ export function useOnDraw(onDraw: (ctx: CanvasRenderingContext2D | null, point: 
 
     }, [onDraw]);
 
-    return { setCanvasRef, onCanvasMouseDown, getImage, clearCanvas, undoLine, writeLine }
+    return { setCanvasRef, onCanvasMouseDown, getImage, clearCanvas, undoLine }
 };

@@ -13,7 +13,7 @@ interface CanvasProps {
 
 const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
-    const { setCanvasRef, onCanvasMouseDown, getImage, clearCanvas, undoLine, writeLine } = useOnDraw(onDraw);
+    const { setCanvasRef, onCanvasMouseDown, getImage, clearCanvas, undoLine } = useOnDraw(onDraw);
 
     const [visible, setVisible] = useState(false);
     const updateVisible = () => { setVisible(!visible); }
@@ -31,7 +31,6 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     function exportImage () {
         updateImage(getImage());
-        writeLine();
     }
 
     function undo () {
@@ -63,8 +62,17 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
 
     return(
         <div>
-            <button onClick={undo}>Undo</button>
-            <button onClick={clear}>Clear</button>
+            <button onClick={undo} style={buttonStyle}>Undo</button>
+            <button onClick={clear} style={buttonStyle}>Clear</button>
+            <button onClick={updateVisible} style={buttonStyle}>{ visible ? `Hide` : `Show` } Tools</button>
+
+            { visible &&
+            <div className='tools'>
+                <label htmlFor='size'>Size: { size }<input id='size' type='range' onChange={updateSize} min={1} max={20} step={1} value={size}/></label>
+                <SketchPicker color={color} onChangeComplete={updateColor} />
+            </div>
+            }
+
             <div className='canvaswrap'>
                 <canvas id='image'
                     width={width}
@@ -77,13 +85,6 @@ const Canvas = ({ width, height, updateImage }: CanvasProps) => {
                     ref={setCanvasRef}
                 />
             </div>
-            <button onClick={updateVisible}>{ visible ? `Hide` : `Show` } Tools</button>
-            
-            { visible && 
-                <label htmlFor='size'>Size: { size }<input id='size' type='range' onChange={updateSize} min={1} max={20} step={1} value={size}/></label>
-            }
-
-            { visible && <SketchPicker color={color} onChangeComplete={updateColor} /> }
 
         </div>
     );
@@ -95,3 +96,5 @@ const canvasStyle = {
     border: "1px solid black",
     background: `#FFF`,
 }
+
+const buttonStyle = { width: `fit-content`, height: `fit-content`, margin: `1%` }

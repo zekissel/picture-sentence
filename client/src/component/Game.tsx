@@ -128,6 +128,7 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
   }, [socket]);
 
   const imgStyle = { background: `#FFF` }
+  const prevStyle = { border: '.1rem dotted #777' }
 
   return (
     <>
@@ -145,18 +146,20 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
                 round % 2 === 1 ? 'Describe this picture with a sentence:' : 'Illustrate this sentence:')
             }
           </h3>
-          <div id='prev'>
+          <div id='prev' style={prevAnswer !== '' ? prevStyle : undefined}>
             { !idle && (round % 2 === 0 ? prevAnswer :
               <img src={prevAnswer} style={imgStyle}/>) 
             }
           </div>
+
+          { (!idle && round % 2 === 0) && <button onClick={submitAnswer}>Submit</button> }
 
           { !idle && (round % 2 === 1 ? 
             <input type='text' placeholder='Your sentence here' onChange={updateAnswer} value={curAnswer} onKeyDown={enterSubmit}/> :
             <Canvas width={400} height={267} updateImage={updateImage} />)
           }
 
-          { !idle && <button onClick={submitAnswer}>Submit</button> }
+          { (!idle && round % 2 === 1) && <button onClick={submitAnswer}>Submit</button> }
 
           { idle && <p>Wait for next round</p> }
           
