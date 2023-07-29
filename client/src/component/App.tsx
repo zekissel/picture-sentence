@@ -196,7 +196,7 @@ export default function App() {
   const [toggleMenu, setMenuTog] = useState(MenuMode.Default);
   const host = () => { setMenuTog(MenuMode.Host); connectSocket(); setErr(``); }
   const join = () => { setMenuTog(MenuMode.Join); connectSocket(); setErr(``); }
-  const def = () => { setMenuTog(MenuMode.Default); setRoom(``); disconnectSocket(); }
+  const def = () => { setMenuTog(MenuMode.Default); setRoom(``); setID(-1); disconnectSocket(); }
   const game = () => { setMenuTog(MenuMode.Game); }
 
   return (

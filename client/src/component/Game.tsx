@@ -55,6 +55,8 @@ function Paper ({ socket, room, index, answers }: PaperProps) {
         setVotes(v);
       }
     });
+
+    return () => { socket.off('post_poll'); }
   }, [socket]);
 
   const imgStyle = { background: `#FFF` }
@@ -125,6 +127,8 @@ export default function Game ({ socket, room, id, round, setRound, setActors }: 
       }
       setRound(inbound.code);
     });
+
+    return () => { socket.off('game_poll'); }
   }, [socket]);
 
   const imgStyle = { background: `#FFF` }

@@ -90,6 +90,8 @@ interface InboundPost { room: string, paper: number; ind: number; val: boolean }
 
 /* --------------- GAME VARIABLES */
 
+const CONN = new Map<Key, boolean>();
+
 const SETTINGS = new Map<Key, RoomSettings>(); /* created by host, persistent until host leaves */
 const LOBBY = new Map<Key, Actor[]>();         /* "              ,   ", tracks players */
 const GAME = new Map<Key, Paper[]>();          /* created after pregame, destroyed before postgame, tracks answers */
@@ -210,13 +212,11 @@ const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) =
 
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', (socket: typeof Socket) => {
-  if (socket.recovered) {
-    // recovery was successful: socket.id, socket.rooms and socket.data were restored
-    console.log(`${socket.id} recovered`);
-    return;
-  }
 
+  if (socket.recovered && socket.id !== socket.old) socket.id = socket.old;
+  CONN.set(socket.id, true);
   console.log(`User Connected: ${socket.id}`);
+  
 
   /* CREATE ROOM */
   socket.on('host', (client: InboundMenu, serverReply: Callback) => {
@@ -285,11 +285,9 @@ io.on('connection', (socket: typeof Socket) => {
       const payload = { status: `kick`, msg: `Kicked from room by host!`, code: -1 };
       const lobby = LOBBY.get(client.room);
       lobby?.forEach((a) => {
-        if (a.socket == client.kick) {
-          socket.to(a.socket).emit(`lobby_poll`, payload);
-          return;
-        }
+        if (a.socket == client.kick) { socket.to(a.socket).emit(`lobby_poll`, payload); return; }
       });
+
     }
 
   })
@@ -390,11 +388,7 @@ io.on('connection', (socket: typeof Socket) => {
     const votes = POST.get(client.room);
     if (!votes) return;
 
-    if (client.val) {
-      votes[client.paper][client.ind] += 1;
-    } else {
-      votes[client.paper][client.ind] -= 1;
-    }
+    votes[client.paper][client.ind] += (client.val ? 1 : -1);
     POST.set(client.room, votes);
 
     const postLoad = { paper: client.paper, ind: client.ind, votes: votes[client.paper][client.ind] };
@@ -406,8 +400,11 @@ io.on('connection', (socket: typeof Socket) => {
   // CLOSE CONNECTION FROM CLIENT TO SERVER */
   socket.on('disconnect', () => {
 
-    playerExit(socket);
-    console.log(`User disconnected: ${socket.id}`);
+    socket.old = socket.id;
+    CONN.set(socket.id, false);
+    setTimeout(() => {
+      if (!CONN.get(socket.id)) { playerExit(socket); CONN.delete(socket.id); console.log(`User disconnected: ${socket.id}`); }
+    }, 6000);
     
   });
 

@@ -144,6 +144,10 @@ input {
   
 }
 
+.typemsg {
+  border: 1px solid black;
+}
+
 .user {
   background-color: #888;
   color: white;

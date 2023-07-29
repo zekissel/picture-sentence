@@ -95,6 +95,8 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
       }
     })
 
+    return () => { socket.off('lobby_poll'); }
+
   }, [socket]);
 
   useEffect(() => {
@@ -148,7 +150,7 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
               }) 
             }
           </ul>
-          <input type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend} disabled={noChat}/>
+          <input className="typemsg" type='text' onChange={updateOut} value={outbound} onKeyDown={enterSend} disabled={noChat} placeholder='Message'/>
           <button onClick={sendMessage} disabled={noChat}>Send</button>
         </fieldset>
       </div>
