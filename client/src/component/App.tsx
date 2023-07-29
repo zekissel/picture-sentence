@@ -4,7 +4,7 @@ import { useState } from "react";
 import Lobby from "./Lobby";
 
 const socket = io("http://localhost:7000", { autoConnect: false });
-//const socket = io();
+//const socket = io('https://picturesentence.com/', { autoConnect: false });
 
 /*
 window.addEventListener('touchmove', ev => {
