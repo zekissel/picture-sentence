@@ -213,7 +213,7 @@ const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) =
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', (socket: typeof Socket) => {
 
-  if (socket.recovered && socket.id !== socket.old) socket.id = socket.old;
+  if (socket.recovered && socket.old !== undefined) socket.id = socket.old;
   CONN.set(socket.id, true);
   console.log(`User Connected: ${socket.id}`);
   
