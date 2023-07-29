@@ -81,17 +81,16 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 
   return (
     <menu className="join">
-      <li><button onClick={def}>Back</button></li>
-      <br/>
+      <li><button onClick={def}>Back</button></li><br/>
 
       <fieldset>
         <legend>Connect</legend>
         <li>
           <input name="nickname" type="text" placeholder="Nickname" value={user} onChange={(e) => { setUser(e.target.value); }} />
-          </li>
+        </li>
         <li>
           <input name="room" type="text" placeholder="Room Key" onKeyDown={enterGo} onChange={(e) => { setRoom(e.target.value); }} />
-          </li>
+        </li>
         { !auth && <li><button onClick={joinGame}>Join</button></li> }
         { auth && <li><button onClick={ () => setAuth(false) }>Cancel</button></li> }
       </fieldset>
@@ -140,8 +139,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 
   return (
     <menu className="host">
-      <li><button onClick={def}>Back</button></li>
-      <br/>
+      <li><button onClick={def}>Back</button></li><br/>
 
       <fieldset>
         <legend>User</legend>
@@ -171,16 +169,11 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
         <li>
           <label htmlFor="usechat">Chat: </label>
           <select id="usechat" onChange={(e: any) => { setUseChat(e.target.value === 0) }}>
-            <option value={0} >
-              Enabled
-            </option>
-            <option value={1}>
-              Disabled
-            </option>
+            <option value={0} >Enabled</option>
+            <option value={1}>Disabled</option>
           </select>
         </li>
-      </fieldset>
-      <br/>
+      </fieldset><br/>
 
       <li><button onClick={hostGame}>Host</button></li>
 
