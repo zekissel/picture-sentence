@@ -19,7 +19,7 @@ var fs = require("fs");
 var https = require("https");
 /**/
 /* --------------- SERVER STATICS */
-var CLIENT_PORT = 5173;
+//const CLIENT_PORT = 5173;
 var SOCKET_PORT = 7000;
 var app = express();
 /* DEVELOPMENT /
@@ -47,6 +47,7 @@ var io = new Server(secureServer, {
     methods: ["GET", "POST"]
 });
 /* --------------- GAME VARIABLES */
+var CONN = new Map();
 var SETTINGS = new Map(); /* created by host, persistent until host leaves */
 var LOBBY = new Map(); /* "              ,   ", tracks players */
 var GAME = new Map(); /* created after pregame, destroyed before postgame, tracks answers */
@@ -100,7 +101,7 @@ var playerLeave = function (socket, key, id, user) {
         GAME["delete"](key);
         LOBBY["delete"](key);
         POST["delete"](key);
-        var node_1 = { room: key, msg: "Lobby closed by host", author: "server", code: -1 };
+        var node_1 = { room: key, msg: "Lobby closed by host!", author: "server", code: -1 };
         notifyLobby(socket, node_1);
         socket.leave(key);
         return;
@@ -147,6 +148,9 @@ var determineStart = function (socket, room, actors) {
 };
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', function (socket) {
+    if (socket.recovered && socket.id !== socket.old)
+        socket.id = socket.old;
+    CONN.set(socket.id, true);
     console.log("User Connected: ".concat(socket.id));
     /* CREATE ROOM */
     socket.on('host', function (client, serverReply) {
@@ -203,7 +207,7 @@ io.on('connection', function (socket) {
     });
     socket.on("signal_adm", function (client) {
         if (client.code < 0) {
-            var payload_1 = { status: "kick", msg: "Kicked from room by host", code: -1 };
+            var payload_1 = { status: "kick", msg: "Kicked from room by host!", code: -1 };
             var lobby = LOBBY.get(client.room);
             lobby === null || lobby === void 0 ? void 0 : lobby.forEach(function (a) {
                 if (a.socket == client.kick) {
@@ -291,12 +295,7 @@ io.on('connection', function (socket) {
         var votes = POST.get(client.room);
         if (!votes)
             return;
-        if (client.val) {
-            votes[client.paper][client.ind] += 1;
-        }
-        else {
-            votes[client.paper][client.ind] -= 1;
-        }
+        votes[client.paper][client.ind] += (client.val ? 1 : -1);
         POST.set(client.room, votes);
         var postLoad = { paper: client.paper, ind: client.ind, votes: votes[client.paper][client.ind] };
         serverReply(postLoad);
@@ -304,8 +303,15 @@ io.on('connection', function (socket) {
     });
     // CLOSE CONNECTION FROM CLIENT TO SERVER */
     socket.on('disconnect', function () {
-        playerExit(socket);
-        console.log("User disconnected: ".concat(socket.id));
+        socket.old = socket.id;
+        CONN.set(socket.id, false);
+        setTimeout(function () {
+            if (!CONN.get(socket.id)) {
+                playerExit(socket);
+                CONN["delete"](socket.id);
+                console.log("User disconnected: ".concat(socket.id));
+            }
+        }, 6000);
     });
 });
 secureServer.listen(SOCKET_PORT, function () {
