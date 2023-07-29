@@ -47,11 +47,6 @@ app.get("/*", function (req: any, res: any) {
 
 const io = new Server(standardServer, {
   
-  connectionStateRecovery: {
-    maxDisconnectionDuration: 1000 * 60 * 1,
-    //skipMiddlewares: true,
-  },
-  
   //methods: ["GET", "POST"],
   /* */
   cors: {
