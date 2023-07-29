@@ -148,7 +148,7 @@ var determineStart = function (socket, room, actors) {
 };
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', function (socket) {
-    if (socket.recovered && socket.id !== socket.old)
+    if (socket.recovered && socket.old !== undefined)
         socket.id = socket.old;
     CONN.set(socket.id, true);
     console.log("User Connected: ".concat(socket.id));
