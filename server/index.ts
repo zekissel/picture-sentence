@@ -149,7 +149,7 @@ const playerLeave = (socket: typeof Socket, key: string, id: number, user: strin
     LOBBY.delete(key);
     POST.delete(key);
     
-    const node = { room: key, msg: `Lobby closed by host`, author: `server`, code: -1 };
+    const node = { room: key, msg: `Lobby closed by host!`, author: `server`, code: -1 };
     notifyLobby(socket, node);
     socket.leave(key);
 
@@ -271,7 +271,7 @@ io.on('connection', (socket: typeof Socket) => {
 
     if (client.code < 0) {
     
-      const payload = { status: `kick`, msg: `Kicked from room by host`, code: -1 };
+      const payload = { status: `kick`, msg: `Kicked from room by host!`, code: -1 };
       const lobby = LOBBY.get(client.room);
       lobby?.forEach((a) => {
         if (a.socket == client.kick) {

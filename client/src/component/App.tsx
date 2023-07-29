@@ -3,7 +3,7 @@ import io from "socket.io-client";
 import { useState } from "react";
 import Lobby from "./Lobby";
 
-const socket = io("http://localhost:7000");
+const socket = io("http://localhost:7000", { autoConnect: false });
 //const socket = io();
 
 /*
@@ -192,14 +192,18 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 export default function App() {
   enum MenuMode { Default, Host, Join, Game }
 
+  const [err, setErr] = useState(``);
   const [id, setID] = useState(-1);
   const [user, setUser] = useState(``);
   const [room, setRoom] = useState(``);
 
+  const connectSocket = () => { if (!socket.connected) socket.connect(); }
+  const disconnectSocket = () => { if (socket.connected) socket.disconnect(); }
+
   const [toggleMenu, setMenuTog] = useState(MenuMode.Default);
-  const host = () => { setMenuTog(MenuMode.Host); }
-  const join = () => { setMenuTog(MenuMode.Join); }
-  const def = () => { setMenuTog(MenuMode.Default); setRoom(``); }
+  const host = () => { setMenuTog(MenuMode.Host); connectSocket(); setErr(``); }
+  const join = () => { setMenuTog(MenuMode.Join); connectSocket(); setErr(``); }
+  const def = () => { setMenuTog(MenuMode.Default); setRoom(``); disconnectSocket(); }
   const game = () => { setMenuTog(MenuMode.Game); }
 
   return (
@@ -222,7 +226,10 @@ export default function App() {
         }
         { toggleMenu === MenuMode.Game &&
 
-          <div id="game"><Lobby socket={socket} id={id} user={user} room={room} def={def} /></div>
+          <div id="game"><Lobby socket={socket} id={id} user={user} room={room} def={def} setERR={setErr} /></div>
+        }
+        { err !== `` &&
+          <div className="err">{ err }</div>
         }
 
     </div>

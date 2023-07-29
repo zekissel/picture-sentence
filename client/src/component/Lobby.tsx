@@ -15,12 +15,13 @@ interface LobbyProps {
   user: string;
   id: number;
   def: () => void;
+  setERR: React.Dispatch<React.SetStateAction<string>>
 }
 
 interface LobbyResponse { status: string; msg: string; author: string, code: number, actors: Actor[] }
 
 
-export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
+export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProps) {
   const [err, setErr] = useState(``);
   const [ready, setReady] = useState(false);
   
@@ -89,7 +90,7 @@ export default function Lobby({ socket, id, user, room, def }: LobbyProps) {
           break;
         case `start`: setPhase(1); setReady(false); break;
         case `kick`: 
-          disconnect(); break;
+          disconnect(); setERR(inbound.msg); break;
         default: break;
       }
     })
