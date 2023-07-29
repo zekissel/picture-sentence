@@ -46,8 +46,13 @@ app.get("/*", function (req: any, res: any) {
 
 
 const io = new Server(standardServer, {
-  //methods: ["GET", "POST"],
   
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 1000 * 60 * 1,
+    //skipMiddlewares: true,
+  },
+  
+  //methods: ["GET", "POST"],
   /* */
   cors: {
     origin: `http://localhost:${CLIENT_PORT}`,
@@ -205,6 +210,12 @@ const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) =
 
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', (socket: typeof Socket) => {
+  if (socket.recovered) {
+    // recovery was successful: socket.id, socket.rooms and socket.data were restored
+    console.log(`${socket.id} recovered`);
+    return;
+  }
+
   console.log(`User Connected: ${socket.id}`);
 
   /* CREATE ROOM */
