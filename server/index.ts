@@ -1,26 +1,27 @@
 const express = require("express");
 const { Server, Socket } = require("socket.io");
 
-/* DEVELOPMENT */
-const http = require('http');
-const cors = require("cors");
-/**/
-
-/* PRODUCTION /
-const path = require("path");
-const fs = require("fs");
 const https = require("https");
-/**/
+const fs = require("fs");
+
+
+/* DEVELOPMENT */
+const cors = require("cors");
+/* PRODUCTION */
+//const path = require("path");
 
 /* --------------- SERVER STATICS */
-const CLIENT_PORT = 5173;
-const SOCKET_PORT = 7000;
-
+const SERVER_PORT = 7000;
 const app = express();
 
 /* DEVELOPMENT */
 app.use(cors());
-const standardServer = http.createServer(app);
+const options = {
+  key: fs.readFileSync('ssl/localhost.key'),
+  cert: fs.readFileSync('ssl/localhost.crt'),
+  requestCert: true,
+  rejectUnauthorized: false,
+};
 /**/
 
 /* PRODUCTION /
@@ -31,7 +32,6 @@ const options = {
   requestCert: true,
   rejectUnauthorized: false,
 };
-const secureServer = https.createServer(options, app);
 
 app.use(express.static( path.join(__dirname + '/dist') ))
 app.get("/*", function (req: any, res: any) {
@@ -44,13 +44,13 @@ app.get("/*", function (req: any, res: any) {
 });
 /**/
 
-
-const io = new Server(standardServer, {
+const secureServer = https.createServer(options, app);
+const io = new Server(secureServer, {
   
   //methods: ["GET", "POST"],
   /* */
   cors: {
-    origin: `http://localhost:${CLIENT_PORT}`,
+    origin: [`http://localhost:5173`, `https://localhost:5173`],
     methods: ["GET", "POST"],
   },/**/
 });
@@ -407,6 +407,6 @@ io.on('connection', (socket: typeof Socket) => {
 
 
 
-standardServer.listen(SOCKET_PORT, () => {
-  console.log(`SERVER RUNNING ON PORT: ${SOCKET_PORT}`);
+secureServer.listen(SERVER_PORT, () => {
+  console.log(`SERVER RUNNING ON PORT: ${SERVER_PORT}`);
 });

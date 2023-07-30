@@ -3,7 +3,7 @@ import io from "socket.io-client";
 import { useState } from "react";
 import Lobby from "./Lobby";
 
-const socket = io("http://localhost:7000", { autoConnect: false });
+const socket = io('https://localhost:7000', { autoConnect: false });
 //const socket = io('https://picturesentence.com/', { autoConnect: false });
 
 /*
