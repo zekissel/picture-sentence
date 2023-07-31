@@ -3,8 +3,8 @@ import io from "socket.io-client";
 import { useState } from "react";
 import Lobby from "./Lobby";
 
-const socket = io('https://localhost:7000', { autoConnect: false });
-//const socket = io('https://picturesentence.com/', { autoConnect: false });
+const socket = io('https://localhost:7000', { autoConnect: false, timeout: 2500 });
+//const socket = io('https://picturesentence.com/', { autoConnect: false, timeout: 2500 });
 
 /*
 window.addEventListener('touchmove', ev => {
@@ -86,7 +86,8 @@ function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       <fieldset>
         <legend>Connect</legend>
         <li>
-          <input name="nickname" type="text" placeholder="Nickname" value={user} onChange={(e) => { setUser(e.target.value); }} />
+          <input name="nickname" type="text" placeholder="Nickname" value={user} 
+            onChange={(e) => { setUser(e.target.value); localStorage.setItem(`user`, e.target.value); }} />
         </li>
         <li>
           <input name="room" type="text" placeholder="Room Key" onKeyDown={enterGo} onChange={(e) => { setRoom(e.target.value); }} />
@@ -144,7 +145,8 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
       <fieldset>
         <legend>User</legend>
         <li>
-          <input name="nickname" type="text" placeholder="Nickname" value={user} onChange={(e) => { setUser(e.target.value); }} />
+          <input name="nickname" type="text" placeholder="Nickname" value={user} 
+            onChange={(e) => { setUser(e.target.value); localStorage.setItem(`user`, e.target.value); }} />
         </li>
       </fieldset>
 
@@ -187,7 +189,7 @@ export default function App() {
 
   const [err, setErr] = useState(``);
   const [id, setID] = useState(-1);
-  const [user, setUser] = useState(``);
+  const [user, setUser] = useState(localStorage.getItem(`user`) || ``);
   const [room, setRoom] = useState(``);
 
   const connectSocket = () => { if (!socket.connected) socket.connect(); }

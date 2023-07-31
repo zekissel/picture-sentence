@@ -165,13 +165,9 @@ input {
 
 .kick {
   width: auto;
-  height: inherit;
+  max-height: 2.5vh;
+  min-height: 20px;
   float: right;
-}
-@media screen and (max-width: 650px) {
-  .kick {
-    height: 4vh;
-  }
 }
 
 .paper {

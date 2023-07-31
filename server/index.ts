@@ -119,8 +119,8 @@ const notifyLobby = (socket: typeof Socket, node: msgNode) => {
     disabled: SETTINGS.get(node.room)?.chat ? undefined : true,
   };
 
-  socket.to(node.room).emit('lobby_poll', lobbyLoad);
-  if (node.code > 0) socket.emit('lobby_poll', lobbyLoad);
+  if (node.code > 0) io.to(node.room).emit('lobby_poll', lobbyLoad);
+  else io.to(node.room).except(socket.id).emit('lobby_poll', lobbyLoad);
 }
 
 const playerJoin = (socket: typeof Socket, room: string, user: string, serverReply: Callback) => {
@@ -151,6 +151,7 @@ const playerLeave = (socket: typeof Socket, key: string, id: number, user: strin
     LOBBY.delete(key);
     POST.delete(key);
     
+    console.log(`Room ${key} closed and returned to available keys`);
     const node = { room: key, msg: `Lobby closed by host!`, author: `server`, code: -1 };
     notifyLobby(socket, node);
     socket.leave(key);
@@ -280,7 +281,7 @@ io.on('connection', (socket: typeof Socket) => {
       const payload = { status: `kick`, msg: `Kicked from room by host!`, code: -1 };
       const lobby = LOBBY.get(client.room);
       lobby?.forEach((a) => {
-        if (a.socket == client.kick) { socket.to(a.socket).emit(`lobby_poll`, payload); return; }
+        if (a.socket == client.kick) { io.to(a.socket).emit(`lobby_poll`, payload); return; }
       });
 
     }
@@ -346,7 +347,7 @@ io.on('connection', (socket: typeof Socket) => {
     const payload = { ready: true, msg: [], code: client.round, actors: actors }
     serverReply(payload);
     const gameLoad = { ready: undefined, msg: [], code: client.round, actors: actors }
-    socket.to(client.room).emit(`game_poll`, gameLoad);
+    io.to(client.room).except(socket.id).emit(`game_poll`, gameLoad);
 
     if (done && client.round < SETTINGS.get(client.room)!.rounds) {
 
@@ -356,8 +357,7 @@ io.on('connection', (socket: typeof Socket) => {
       papers.unshift(papers.pop()!);
 
       const gameLoad = { ready: false, msg: papers, code: client.round + 1, actors: actors };
-      socket.to(client.room).emit('game_poll', gameLoad);
-      socket.emit('game_poll', gameLoad);
+      io.to(client.room).emit('game_poll', gameLoad);
 
     } else if (done) {
       /* end game */
@@ -368,8 +368,7 @@ io.on('connection', (socket: typeof Socket) => {
       LOBBY.set(client.room, actors);
 
       const gameLoad = { ready: false, msg: papers, code: -1, actors: actors};
-      socket.to(client.room).emit('game_poll', gameLoad);
-      socket.emit('game_poll', gameLoad);
+      io.to(client.room).emit('game_poll', gameLoad);
 
       const votes: number[][] = new Array(papers.length).fill(new Array(papers[0].answers.length).fill(0));
       POST.set(client.room, votes);
@@ -388,7 +387,7 @@ io.on('connection', (socket: typeof Socket) => {
 
     const postLoad = { paper: client.paper, ind: client.ind, votes: votes[client.paper][client.ind] };
     serverReply(postLoad);
-    socket.to(client.room).emit('post_poll', postLoad);
+    io.to(client.room).except(socket.io).emit('post_poll', postLoad);
   });
 
 
@@ -399,7 +398,7 @@ io.on('connection', (socket: typeof Socket) => {
     CONN.set(socket.id, false);
     setTimeout(() => {
       if (!CONN.get(socket.id)) { playerExit(socket); CONN.delete(socket.id); console.log(`User disconnected: ${socket.id}`); }
-    }, 6000);
+    }, 15000);
     
   });
 
