@@ -15,6 +15,7 @@ const SERVER_PORT = 7000;
 const app = express();
 
 /* DEVELOPMENT */
+
 app.use(cors());
 const options = {
   key: fs.readFileSync('ssl/localhost.key'),
@@ -46,6 +47,11 @@ app.get("/*", function (req: any, res: any) {
 
 const secureServer = https.createServer(options, app);
 const io = new Server(secureServer, {
+
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 10 * 1000,
+    skipMiddlewares: true,
+  },
   
   //methods: ["GET", "POST"],
   /* */
@@ -64,6 +70,7 @@ interface Actor {
   id: number;
   user: string;
   ready: boolean;
+  conn: boolean;
 }
 interface Paper {
   id: number;
@@ -83,9 +90,11 @@ interface InboundLobby { room: string; user: string; id: number; ready: boolean;
 interface InboundGame { room: string; id: number; msg: string; round: number; }
 interface InboundPost { room: string, paper: number; ind: number; val: boolean }
 
+interface ConnectionStatus { connected: boolean; room: string; }
+
 /* --------------- GAME VARIABLES */
 
-const CONN = new Map<Key, boolean>();
+const CONN = new Map<Key, ConnectionStatus>();
 
 const SETTINGS = new Map<Key, RoomSettings>(); /* created by host, persistent until host leaves */
 const LOBBY = new Map<Key, Actor[]>();         /* "              ,   ", tracks players */
@@ -126,9 +135,11 @@ const notifyLobby = (socket: typeof Socket, node: msgNode) => {
 const playerJoin = (socket: typeof Socket, room: string, user: string, serverReply: Callback) => {
 
   const actors = LOBBY.get(room)!;
-  const a = { socket: socket.id, id: actors.length, user: user, ready: false }
+  const a = { socket: socket.id, id: actors.length, user: user, ready: false, conn: true }
   actors.push(a); LOBBY.set(room, actors);
 
+  const status = CONN.get(socket.id);
+  if (status) { status.room = room; CONN.set(room, status); }
   socket.join(room);
 
   const ID = (actors ? actors.length - 1 : 0);
@@ -144,6 +155,9 @@ const playerJoin = (socket: typeof Socket, room: string, user: string, serverRep
 }
 
 const playerLeave = (socket: typeof Socket, key: string, id: number, user: string) => {
+
+  const status = CONN.get(socket.id);
+  if (status) { status.room = ``; CONN.set(socket.id, status) }
 
   if (id === 0) {   // host left; close lobby
     SETTINGS.delete(key);
@@ -209,9 +223,25 @@ const determineStart = (socket: typeof Socket, room: string, actors: Actor[] ) =
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', (socket: typeof Socket) => {
 
-  if (socket.recovered && socket.old !== undefined) socket.id = socket.old;
-  CONN.set(socket.id, true);
-  console.log(`User Connected: ${socket.id}`);
+  const status = CONN.get(socket.id) ?? { connected: true, room: `` };
+  status.connected = true;
+  CONN.set(socket.id, status);
+
+  if (socket.recovered && status.room !== ``) {
+    const actors = LOBBY.get(status.room)!;
+    const ind = actors?.findIndex((a) => a.socket == socket.id);
+    actors[ind].conn = true;
+    LOBBY.set(status.room, actors);
+
+    const node = { room: status.room, author: ``, msg: ``, code: 1 }
+    notifyLobby(socket, node);
+    console.log(`User reconnected: ${socket.id}`);
+
+    actors?.forEach((a) => console.log(a.conn));
+  }
+  else console.log(`User Connected: ${socket.id}`);
+  
+  
   
 
   /* CREATE ROOM */
@@ -394,11 +424,27 @@ io.on('connection', (socket: typeof Socket) => {
   // CLOSE CONNECTION FROM CLIENT TO SERVER */
   socket.on('disconnect', () => {
 
-    socket.old = socket.id;
-    CONN.set(socket.id, false);
+    const status = CONN.get(socket.id);
+    if (status) {
+      status.connected = false;
+      CONN.set(socket.id, status);
+
+      if (status.room !== ``) {
+        const actors = LOBBY.get(status.room)!;
+        const ind = actors?.findIndex((a) => a.socket == socket.id);
+        actors[ind].conn = false;
+        LOBBY.set(status.room, actors);
+
+        const node = { room: status.room, author: ``, msg: ``, code: 1 }
+        notifyLobby(socket, node);
+
+        actors?.forEach((a) => console.log(a.conn));
+      }
+    }
+    
     setTimeout(() => {
       if (!CONN.get(socket.id)) { playerExit(socket); CONN.delete(socket.id); console.log(`User disconnected: ${socket.id}`); }
-    }, 15000);
+    }, 12000);
     
   });
 

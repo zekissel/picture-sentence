@@ -7,6 +7,7 @@ interface Actor {
   id: number;
   user: string;
   ready: boolean;
+  conn: boolean;
 }
 
 interface LobbyProps {
@@ -31,7 +32,7 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
   const btmTxt = useRef<HTMLLIElement>(null);
   const [noChat, setNoChat] = useState(false);
 
-  const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false, socket: `` }]);
+  const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false, socket: ``, conn: true }]);
   const [gamePhase, setPhase] = useState(0);
 
   const disconnect = () => {
@@ -129,6 +130,7 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
                 return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> 
               
                   <span className='user'>{ v.user }</span>
+                  { !v.conn && <span>CONNECTION ERROR</span> }
                   
                   <label className='check' style={ v.ready ? green : red }>{ v.ready ? '✓' : '✗' }</label>
 

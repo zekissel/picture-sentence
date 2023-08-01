@@ -7,6 +7,7 @@ interface Actor {
   id: number;
   user: string;
   ready: boolean;
+  conn: boolean;
 }
 
 interface Paper {id: number; answers: string[]; }
