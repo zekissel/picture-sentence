@@ -9,22 +9,24 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
 };
 var express = require("express");
 var _a = require("socket.io"), Server = _a.Server, Socket = _a.Socket;
-/* DEVELOPMENT /
-const http = require('http');
-const cors = require("cors");
-/**/
+var https = require("https");
+var fs = require("fs");
+/* DEVELOPMENT */
+//const cors = require("cors");
 /* PRODUCTION */
 var path = require("path");
-var fs = require("fs");
-var https = require("https");
-/**/
 /* --------------- SERVER STATICS */
-//const CLIENT_PORT = 5173;
-var SOCKET_PORT = 7000;
+var SERVER_PORT = 7000;
 var app = express();
 /* DEVELOPMENT /
+
 app.use(cors());
-const standardServer = http.createServer(app);
+const options = {
+  key: fs.readFileSync('ssl/localhost.key'),
+  cert: fs.readFileSync('ssl/localhost.crt'),
+  requestCert: true,
+  rejectUnauthorized: false,
+};
 /**/
 /* PRODUCTION */
 var options = {
@@ -34,7 +36,6 @@ var options = {
     requestCert: true,
     rejectUnauthorized: false
 };
-var secureServer = https.createServer(options, app);
 app.use(express.static(path.join(__dirname + '/dist')));
 app.get("/*", function (req, res) {
     res.sendFile(path.join(__dirname + '/dist/index.html'), function (err) {
@@ -43,7 +44,12 @@ app.get("/*", function (req, res) {
     });
 });
 /**/
+var secureServer = https.createServer(options, app);
 var io = new Server(secureServer, {
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 10 * 1000,
+        skipMiddlewares: true
+    },
     methods: ["GET", "POST"]
 });
 /* --------------- GAME VARIABLES */
@@ -77,15 +83,21 @@ var notifyLobby = function (socket, node) {
         actors: LOBBY.get(node.room),
         disabled: ((_a = SETTINGS.get(node.room)) === null || _a === void 0 ? void 0 : _a.chat) ? undefined : true
     };
-    socket.to(node.room).emit('lobby_poll', lobbyLoad);
     if (node.code > 0)
-        socket.emit('lobby_poll', lobbyLoad);
+        io.to(node.room).emit('lobby_poll', lobbyLoad);
+    else
+        io.to(node.room).except(socket.id).emit('lobby_poll', lobbyLoad);
 };
 var playerJoin = function (socket, room, user, serverReply) {
     var actors = LOBBY.get(room);
-    var a = { socket: socket.id, id: actors.length, user: user, ready: false };
+    var a = { socket: socket.id, id: actors.length, user: user, ready: false, conn: true };
     actors.push(a);
     LOBBY.set(room, actors);
+    var status = CONN.get(socket.id);
+    if (status) {
+        status.room = room;
+        CONN.set(room, status);
+    }
     socket.join(room);
     var ID = (actors ? actors.length - 1 : 0);
     console.log("User with ID: ".concat(socket.id, " has joined room ").concat(room));
@@ -96,11 +108,17 @@ var playerJoin = function (socket, room, user, serverReply) {
     notifyLobby(socket, node);
 };
 var playerLeave = function (socket, key, id, user) {
+    var status = CONN.get(socket.id);
+    if (status) {
+        status.room = "";
+        CONN.set(socket.id, status);
+    }
     if (id === 0) { // host left; close lobby
         SETTINGS["delete"](key);
         GAME["delete"](key);
         LOBBY["delete"](key);
         POST["delete"](key);
+        console.log("Room ".concat(key, " closed and returned to available keys"));
         var node_1 = { room: key, msg: "Lobby closed by host!", author: "server", code: -1 };
         notifyLobby(socket, node_1);
         socket.leave(key);
@@ -148,10 +166,21 @@ var determineStart = function (socket, room, actors) {
 };
 /* --------------- WEBSOCKET ROUTES */
 io.on('connection', function (socket) {
-    if (socket.recovered && socket.old !== undefined)
-        socket.id = socket.old;
-    CONN.set(socket.id, true);
-    console.log("User Connected: ".concat(socket.id));
+    var _a;
+    var status = (_a = CONN.get(socket.id)) !== null && _a !== void 0 ? _a : { connected: true, room: "" };
+    status.connected = true;
+    CONN.set(socket.id, status);
+    if (socket.recovered && status.room !== "") {
+        var actors = LOBBY.get(status.room);
+        var ind = actors === null || actors === void 0 ? void 0 : actors.findIndex(function (a) { return a.socket == socket.id; });
+        actors[ind].conn = true;
+        LOBBY.set(status.room, actors);
+        var node = { room: status.room, author: "", msg: "", code: 1 };
+        notifyLobby(socket, node);
+        console.log("User reconnected: ".concat(socket.id));
+    }
+    else
+        console.log("User Connected: ".concat(socket.id));
     /* CREATE ROOM */
     socket.on('host', function (client, serverReply) {
         if (LOBBY.has(client.room)) {
@@ -211,7 +240,7 @@ io.on('connection', function (socket) {
             var lobby = LOBBY.get(client.room);
             lobby === null || lobby === void 0 ? void 0 : lobby.forEach(function (a) {
                 if (a.socket == client.kick) {
-                    socket.to(a.socket).emit("lobby_poll", payload_1);
+                    io.to(a.socket).emit("lobby_poll", payload_1);
                     return;
                 }
             });
@@ -268,14 +297,13 @@ io.on('connection', function (socket) {
         var payload = { ready: true, msg: [], code: client.round, actors: actors };
         serverReply(payload);
         var gameLoad = { ready: undefined, msg: [], code: client.round, actors: actors };
-        socket.to(client.room).emit("game_poll", gameLoad);
+        io.to(client.room).except(socket.id).emit("game_poll", gameLoad);
         if (done && client.round < SETTINGS.get(client.room).rounds) {
             actors.map(function (a) { a.ready = false; return a; });
             LOBBY.set(client.room, actors);
             papers.unshift(papers.pop());
             var gameLoad_1 = { ready: false, msg: papers, code: client.round + 1, actors: actors };
-            socket.to(client.room).emit('game_poll', gameLoad_1);
-            socket.emit('game_poll', gameLoad_1);
+            io.to(client.room).emit('game_poll', gameLoad_1);
         }
         else if (done) {
             /* end game */
@@ -284,8 +312,7 @@ io.on('connection', function (socket) {
             actors.map(function (a) { a.ready = false; return a; });
             LOBBY.set(client.room, actors);
             var gameLoad_2 = { ready: false, msg: papers, code: -1, actors: actors };
-            socket.to(client.room).emit('game_poll', gameLoad_2);
-            socket.emit('game_poll', gameLoad_2);
+            io.to(client.room).emit('game_poll', gameLoad_2);
             var votes = new Array(papers.length).fill(new Array(papers[0].answers.length).fill(0));
             POST.set(client.room, votes);
             GAME["delete"](client.room);
@@ -299,21 +326,32 @@ io.on('connection', function (socket) {
         POST.set(client.room, votes);
         var postLoad = { paper: client.paper, ind: client.ind, votes: votes[client.paper][client.ind] };
         serverReply(postLoad);
-        socket.to(client.room).emit('post_poll', postLoad);
+        io.to(client.room).except(socket.io).emit('post_poll', postLoad);
     });
     // CLOSE CONNECTION FROM CLIENT TO SERVER */
     socket.on('disconnect', function () {
-        socket.old = socket.id;
-        CONN.set(socket.id, false);
+        var status = CONN.get(socket.id);
+        if (status) {
+            status.connected = false;
+            CONN.set(socket.id, status);
+            if (status.room !== "") {
+                var actors = LOBBY.get(status.room);
+                var ind = actors === null || actors === void 0 ? void 0 : actors.findIndex(function (a) { return a.socket == socket.id; });
+                actors[ind].conn = false;
+                LOBBY.set(status.room, actors);
+                var node = { room: status.room, author: "", msg: "", code: 1 };
+                notifyLobby(socket, node);
+            }
+        }
         setTimeout(function () {
             if (!CONN.get(socket.id)) {
                 playerExit(socket);
                 CONN["delete"](socket.id);
                 console.log("User disconnected: ".concat(socket.id));
             }
-        }, 6000);
+        }, 12000);
     });
 });
-secureServer.listen(SOCKET_PORT, function () {
-    console.log("SERVER RUNNING ON PORT: ".concat(SOCKET_PORT));
+secureServer.listen(SERVER_PORT, function () {
+    console.log("SERVER RUNNING ON PORT: ".concat(SERVER_PORT));
 });
