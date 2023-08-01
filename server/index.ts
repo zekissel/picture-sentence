@@ -236,8 +236,6 @@ io.on('connection', (socket: typeof Socket) => {
     const node = { room: status.room, author: ``, msg: ``, code: 1 }
     notifyLobby(socket, node);
     console.log(`User reconnected: ${socket.id}`);
-
-    actors?.forEach((a) => console.log(a.conn));
   }
   else console.log(`User Connected: ${socket.id}`);
   
@@ -437,8 +435,6 @@ io.on('connection', (socket: typeof Socket) => {
 
         const node = { room: status.room, author: ``, msg: ``, code: 1 }
         notifyLobby(socket, node);
-
-        actors?.forEach((a) => console.log(a.conn));
       }
     }
     

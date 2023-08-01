@@ -130,7 +130,7 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
                 return <li key={i} style={ i % 2 == 0 ? regCol : altCol}> 
               
                   <span className='user'>{ v.user }</span>
-                  { !v.conn && <span>CONNECTION ERROR</span> }
+                  { !v.conn && <img src='conn_err.png' height={20} width={20}/> }
                   
                   <label className='check' style={ v.ready ? green : red }>{ v.ready ? '✓' : '✗' }</label>
 

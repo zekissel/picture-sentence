@@ -201,17 +201,12 @@ export default function App() {
   const def = () => { setMenuTog(MenuMode.Default); setRoom(``); setID(-1); disconnectSocket(); }
   const game = () => { setMenuTog(MenuMode.Game); }
 
-  /*
+  /* /
   socket.on("connect", () => {
-    console.log("recovered?", socket.id + socket.recovered);
-  
     setTimeout(() => {
-      if (socket.io.engine) {
-        // close the low-level connection and trigger a reconnection
-        socket.io.engine.close();
-      }
+      if (socket.io.engine) socket.io.engine.close();
     }, 4000);
-  });*/
+  });/**/
 
   return (
     <div className="App">
