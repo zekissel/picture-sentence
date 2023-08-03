@@ -99,7 +99,7 @@ var playerJoin = function (socket, room, user, serverReply) {
         CONN.set(room, status);
     }
     socket.join(room);
-    var ID = (actors ? actors.length - 1 : 0);
+    var ID = actors.length - 1;
     console.log("User with ID: ".concat(socket.id, " has joined room ").concat(room));
     var payload = { status: "ok", msg: "Joining room ".concat(room), code: ID };
     serverReply(payload);
@@ -337,10 +337,12 @@ io.on('connection', function (socket) {
             if (status.room !== "") {
                 var actors = LOBBY.get(status.room);
                 var ind = actors === null || actors === void 0 ? void 0 : actors.findIndex(function (a) { return a.socket == socket.id; });
-                actors[ind].conn = false;
-                LOBBY.set(status.room, actors);
-                var node = { room: status.room, author: "", msg: "", code: 1 };
-                notifyLobby(socket, node);
+                if (ind > -1) {
+                    actors[ind].conn = false;
+                    LOBBY.set(status.room, actors);
+                    var node = { room: status.room, author: "", msg: "", code: 1 };
+                    notifyLobby(socket, node);
+                }
             }
         }
         setTimeout(function () {
