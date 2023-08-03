@@ -2,6 +2,7 @@ import "../App.css";
 import io from "socket.io-client";
 import { useState } from "react";
 import Lobby from "./Lobby";
+import Demo from './Demo';
 
 const socket = io('https://localhost:7000', { autoConnect: false, timeout: 2500 });
 //const socket = io('https://picturesentence.com/', { autoConnect: false, timeout: 2500 });
@@ -39,6 +40,7 @@ interface ClientProps {
   def: () => void;
   game: () => void;
 }
+
 
 function Join ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) {
 
@@ -185,7 +187,7 @@ function Host ({ setID, user, setUser, room, setRoom, def, game }: ClientProps) 
 }
 
 export default function App() {
-  enum MenuMode { Default, Host, Join, Game }
+  enum MenuMode { Default, Tutorial, Host, Join, Game }
 
   const [err, setErr] = useState(``);
   const [id, setID] = useState(-1);
@@ -196,6 +198,7 @@ export default function App() {
   const disconnectSocket = () => { if (socket.connected) socket.disconnect(); }
 
   const [toggleMenu, setMenuTog] = useState(MenuMode.Default);
+  const tutorial = () => { setMenuTog(MenuMode.Tutorial); }
   const host = () => { setMenuTog(MenuMode.Host); connectSocket(); setErr(``); }
   const join = () => { setMenuTog(MenuMode.Join); connectSocket(); setErr(``); }
   const def = () => { setMenuTog(MenuMode.Default); setRoom(``); setID(-1); disconnectSocket(); }
@@ -216,6 +219,7 @@ export default function App() {
           <menu>
             <li><button className='menu' onClick={host}>Host Game</button></li>
             <li><button className='menu' onClick={join}>Join Game</button></li>
+            <li><button className='menu' onClick={tutorial}>How to Play</button></li>
           </menu>
         }
         { toggleMenu === MenuMode.Host &&
@@ -229,6 +233,10 @@ export default function App() {
         { toggleMenu === MenuMode.Game &&
 
           <div id="game"><Lobby socket={socket} id={id} user={user} room={room} def={def} setERR={setErr} /></div>
+        }
+        { toggleMenu === MenuMode.Tutorial &&
+
+          <Demo def={def} />
         }
         { err !== `` &&
           <div className="err">{ err }</div>

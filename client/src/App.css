@@ -54,9 +54,13 @@ body {
   }
 }
 
-ul, menu, li {
+ul, menu {
   text-decoration: none;
   list-style: none;
+  margin: 0;
+  padding: 1% 0;
+}
+menu > li {
   margin: 0;
   padding: 1% 0;
 }
@@ -99,6 +103,24 @@ button {
   height: 6vh;
   min-width: 25vw;
   font-size: larger;
+}
+
+.howto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+ol {
+  overflow: scroll;
+  overflow-x: hidden;
+  max-height: 25vh;
+  max-width: 90%;
+  background-color: rgb(220, 220, 220, .8);
+}
+ol > li {
+  display: list-item;
 }
 
 .canvaswrap {

@@ -32,7 +32,7 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
   const btmTxt = useRef<HTMLLIElement>(null);
   const [noChat, setNoChat] = useState(false);
 
-  const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false, socket: ``, conn: true }]);
+  const [actors, setActors] = useState<Actor[]>([{ id: id, user: user, ready: false, socket: socket.id, conn: true }]);
   const [gamePhase, setPhase] = useState(0);
 
   const disconnect = () => {
@@ -96,9 +96,17 @@ export default function Lobby({ socket, id, user, room, def, setERR }: LobbyProp
       }
     })
 
-    return () => { socket.off('lobby_poll'); }
+    socket.on('disconnect', () => {
+      
+      const a = {...actors[id], conn: false}
+      const lob = [...actors]; lob[id] = a;
+      setActors(lob);
+    });
 
-  }, [socket]);
+    return () => { socket.off('lobby_poll'); socket.off('disconnect'); }
+
+  }, [socket, actors]);
+
 
   useEffect(() => {
     if (btmTxt.current) {
