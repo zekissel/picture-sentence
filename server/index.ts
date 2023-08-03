@@ -142,7 +142,7 @@ const playerJoin = (socket: typeof Socket, room: string, user: string, serverRep
   if (status) { status.room = room; CONN.set(room, status); }
   socket.join(room);
 
-  const ID = (actors ? actors.length - 1 : 0);
+  const ID = actors.length - 1;
   console.log(`User with ID: ${socket.id} has joined room ${room}`);
   
   const payload = { status: `ok`, msg: `Joining room ${room}`, code: ID };
@@ -430,11 +430,13 @@ io.on('connection', (socket: typeof Socket) => {
       if (status.room !== ``) {
         const actors = LOBBY.get(status.room)!;
         const ind = actors?.findIndex((a) => a.socket == socket.id);
-        actors[ind].conn = false;
-        LOBBY.set(status.room, actors);
+        if (ind > -1) {
+          actors[ind].conn = false;
+          LOBBY.set(status.room, actors);
 
-        const node = { room: status.room, author: ``, msg: ``, code: 1 }
-        notifyLobby(socket, node);
+          const node = { room: status.room, author: ``, msg: ``, code: 1 }
+          notifyLobby(socket, node);
+        }
       }
     }
     
