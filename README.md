@@ -2,7 +2,7 @@
 
 A classic word and image game, guaranteed to catalyze family fun. Developed using React and Socket.io. 
 
-## To Play:
+## To Play (@ picturesentence.com):
 *Best suitaible for 4+ players*
 
 *These instructions describe in-person play*
